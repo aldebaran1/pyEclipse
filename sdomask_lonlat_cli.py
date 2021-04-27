@@ -5,8 +5,9 @@ Created on Fri Apr 23 14:00:33 2021
 @author: smrak@bu.edu
 """
 
-import utils, eio, os, subprocess
+import os, subprocess
 import xarray
+from eclipse import utils, eio
 from dateutil import parser
 from datetime import datetime
 import numpy as np
