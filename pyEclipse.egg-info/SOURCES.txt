@@ -1,8 +1,0 @@
-setup.py
-eclipse/eio.py
-eclipse/utils.py
-pyEclipse.egg-info/PKG-INFO
-pyEclipse.egg-info/SOURCES.txt
-pyEclipse.egg-info/dependency_links.txt
-pyEclipse.egg-info/requires.txt
-pyEclipse.egg-info/top_level.txt
