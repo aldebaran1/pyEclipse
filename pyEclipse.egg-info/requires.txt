@@ -1,0 +1,5 @@
+numpy
+scipy
+pyEphem
+futures3
+sunpy
