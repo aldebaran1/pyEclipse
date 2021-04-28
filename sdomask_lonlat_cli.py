@@ -5,7 +5,7 @@ Created on Fri Apr 23 14:00:33 2021
 @author: smrak@bu.edu
 """
 
-import os, subprocess
+import os, subprocess, platform
 import xarray
 from eclipse import utils, eio
 from dateutil import parser
@@ -30,14 +30,22 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
     alt_km is alitutde in kilometer
     """
     if not os.path.exists(odir):
-        subprocess.call('mkdir "{}"'.format(odir), shell=True)
+        if platform.system() == 'Windows':
+            subprocess.call('mkdir "{}"'.format(odir), shell=True)
+        elif platform.system() == 'Linux':
+            subprocess.call('mkdir -p {}'.format(odir), shell=True)
+        else:
+            print ("Platform {} is currently not supported.".format(platform.system()))
+            exit()
     if aiafolder is None:
         import yaml
         try:
-            stream = yaml.load(open(os.path.join(os.getcwd(), 'cfg', 'cfg.yaml'), 'r'), Loader=yaml.SafeLoader())
+            stream = yaml.load(open(os.path.join(os.getcwd(), 'cfg', 'cfg.yaml'), 'r'), Loader=yaml.SafeLoader)
             aiafolder= stream.get('sdodir')
-        except:
-            raise("Please provide a path to directory where SDO AIA images are located. Type --sdodir '/path/to.../' or provide a cfg.yaml file inside the /cfg/cfg.yaml file")
+        except BaseException as e:
+            raise(e)
+    
+    assert os.path.exists(aiafolder)
     if tsdo is None:
         tsdo = startend[0]
     times = utils.get_times(parser.parse(startend[0]), parser.parse(startend[1]), dm=dt)
@@ -90,7 +98,6 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
         X['time_sdo'] = SDO.time
         X.to_netcdf(odir + "{}A_{}km_{}.nc".format(wl, int(alt_km), T.strftime("%Y%m%d%H%M%S")))
         X.close()
-        break
 
 if __name__ == '__main__':
     p = ArgumentParser()
