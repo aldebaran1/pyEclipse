@@ -46,7 +46,7 @@ def main(startend, odir, glonlim=[-180,180], glatlim=[-90,90], alt_km=0,
             # TO XARRAY
             X = xarray.Dataset(
                 {
-                    "of": (("glat", "glon"), of),
+                    "of": (("glat", "glon"), of.T),
                 },
                 {"glon": glon, "glat": glat}
             )
@@ -70,6 +70,6 @@ if __name__ == '__main__':
     
     P = p.parse_args()
     
-    main(P.startend, odir=P.odir, dt = P.tres, tsdo = P.tsdo,
+    main(P.startend, odir=P.odir, dt = P.tres,
          glonlim=P.glon, glatlim=P.glat, dlon=P.dlon, dlat=P.dlat,
-         wl = P.wl, alt_km= P.altkm, aiafolder = P.sdodir, srad_fact=P.sunradii)
+         alt_km= P.altkm, srad_fact=P.sunradii)
