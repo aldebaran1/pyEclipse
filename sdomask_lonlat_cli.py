@@ -86,6 +86,7 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
             X = xarray.Dataset(
                 {
                     "of": (("glat", "glon"), of),
+                    "sza": (("glat", "glon"), sza),
                 },
                 {"glon": glon, "glat": glat}
             )

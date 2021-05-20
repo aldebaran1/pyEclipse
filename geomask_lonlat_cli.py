@@ -37,16 +37,18 @@ def main(startend, odir, glonlim=[-180,180], glatlim=[-90,90], alt_km=0,
     glon = np.arange(glonlim[0], glonlim[1], dlon)
     glat = np.arange(glatlim[0], glatlim[1], dlat)
     ghgt = alt_km * 1000
-    
+    glon_grid, glat_grid = np.meshgrid(glon,glat)
     for it,T in enumerate(times):
         save_fn = odir + "{}_{}km_{}_{}.nc".format(T.strftime("%Y%m%d%H%M%S"), int(alt_km), 'geo', srad_fact)
         if not os.path.exists(save_fn):
             print ("Processing {} // {}/{}".format(T, it+1, times.size))
+            sza = utils.get_sza(T, glon=glon_grid, glat=glat_grid, alt_km=alt_km)
             of = utils.mask_lonlat_geo(T=T, glon=glon, glat=glat, ghgt=ghgt, srad_fact=srad_fact)
             # TO XARRAY
             X = xarray.Dataset(
                 {
                     "of": (("glat", "glon"), of.T),
+                    "sza": (("glat", "glon"), sza.T)
                 },
                 {"glon": glon, "glat": glat}
             )
