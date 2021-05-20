@@ -39,7 +39,7 @@ def main(startend, odir, glonlim=[-180,180], glatlim=[-90,90], alt_km=0,
     ghgt = alt_km * 1000
     
     for it,T in enumerate(times):
-        save_fn = odir + "geo_{}rad_{}km_{}.nc".format(str(srad_fact).replace(".","_"), int(alt_km), T.strftime("%Y%m%d%H%M%S"))
+        save_fn = odir + "{}_{}km_{}_{}.nc".format(T.strftime("%Y%m%d%H%M%S"), int(alt_km), 'geo', srad_fact)
         if not os.path.exists(save_fn):
             print ("Processing {} // {}/{}".format(T, it+1, times.size))
             of = utils.mask_lonlat_geo(T=T, glon=glon, glat=glat, ghgt=ghgt, srad_fact=srad_fact)

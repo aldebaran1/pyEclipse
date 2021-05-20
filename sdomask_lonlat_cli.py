@@ -61,7 +61,7 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
     critical_distance = imres/2 + imres*1.414
     
     for it,T in enumerate(times):
-        save_fn = odir + "{}A_{}km_{}.nc".format(wl, int(alt_km), T.strftime("%Y%m%d%H%M%S"))
+        save_fn = odir + "{}_{}km_{}.nc".format(T.strftime("%Y%m%d%H%M%S"), int(alt_km), wl)
         if not os.path.exists(save_fn):
             print ("Processing {} // {}/{}".format(T, it+1, times.size))
             tt = datetime.now()
