@@ -6,7 +6,7 @@ Created on Fri Apr 23 14:00:33 2021
 """
 
 import os, subprocess, platform
-import xarray
+import xarray, yaml
 from eclipse import utils, eio
 from dateutil import parser
 from datetime import datetime
@@ -38,14 +38,15 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
             print ("Platform {} is currently not supported.".format(platform.system()))
             exit()
     if aiafolder is None:
-        import yaml
         try:
             stream = yaml.load(open(os.path.join(os.getcwd(), 'cfg', 'cfg.yaml'), 'r'), Loader=yaml.SafeLoader)
             aiafolder= stream.get('sdodir')
+            if not os.path.exists(aiafolder):
+                aiafolder = input("Type valid path to the sdoaia folder")
         except BaseException as e:
             raise(e)
-    
-    assert os.path.exists(aiafolder)
+    assert os.path.exists(aiafolder), "AIAFOLDER doesn't exists"
+
     if tsdo is None:
         tsdo = startend[0]
     times = utils.get_times(parser.parse(startend[0]), parser.parse(startend[1]), dm=dt)
