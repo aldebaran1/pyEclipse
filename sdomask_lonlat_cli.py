@@ -39,12 +39,15 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
             exit()
     if aiafolder is None:
         try:
+            print (os.path.join(os.getcwd(), 'cfg', 'cfg.yaml'))
             stream = yaml.load(open(os.path.join(os.getcwd(), 'cfg', 'cfg.yaml'), 'r'), Loader=yaml.SafeLoader)
-            aiafolder= stream.get('sdodir')
-            if not os.path.exists(aiafolder):
-                aiafolder = input("Type valid path to the sdoaia folder")
+            aiafolder= stream.get('sdofolder')
         except BaseException as e:
             raise(e)
+        print (aiafolder)
+        if aiafolder is None or (not os.path.exists(aiafolder)):
+                aiafolder = input("Type valid path to the sdoaia folder:\n")
+    print (aiafolder)
     assert os.path.exists(aiafolder), "AIAFOLDER doesn't exists"
 
     if tsdo is None:
