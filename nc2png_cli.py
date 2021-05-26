@@ -32,8 +32,16 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
         subprocess.call('mkdir "{}"'.format(odir), timeout=2, shell=True)
     assert os.path.exists(odir)
     
-    EOFF = np.array(glob.glob(idir + "*_*{}km_*{}*.nc".format(alt_km,wl)))
-    f_times = np.array([parser.parse(os.path.split(f)[1][:14]) for f in EOFF])
+    EOFF = np.array(glob.glob(idir + "*_{}km_{}.nc".format(alt_km, wl)))
+    f_times = []
+    for f in EOFF:
+        try:
+            f_times.append(parser.parse(os.path.split(f)[1][:14]))
+        except:
+            pass
+    f_times = np.array(f_times)
+    assert (f_times.size > 0)
+    
     if tlim is None:
         idt = np.ones(f_times.size,dtype=bool)
     else:
