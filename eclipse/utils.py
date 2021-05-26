@@ -244,8 +244,8 @@ def mask_ephem_sdo(T, glon, glat, ghgt, x0, y0, imsdo, pixscale):
         of =  np.nansum(np.multiply(imsdo,hmask)) / np.nansum(imsdo)
     return of
 
-def eof_time(t0, t1, glon, glat, ghgt, srad_fact=1, dm=10, mode='ephem'):
-    times = get_times(t0,t1,dm=dm)
+def eof_time(t0, t1, glon, glat, ghgt, srad_fact=1, dm=10, ds=0, mode='ephem'):
+    times = get_times(t0,t1,dm=dm, ds=ds)
     if not isinstance(srad_fact, list):
         srad_fact = [srad_fact]
     
