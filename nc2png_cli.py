@@ -16,13 +16,19 @@ from dateutil import parser
 from argparse import ArgumentParser
 
 projection = 'ortographic'
-clw = 0.5
 mlat_levels = [-65, -75, 60, 75]
-tlim = None
 
 def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
          laplace=0,auroral_oval=0,clabel=0,
          lat0 = None, lon0 = None, save=1):
+    cmax = 10 if clabel else 25
+    clw = 1 if clabel else 0.5
+    
+    if auroral_oval:
+        apx=1
+    else:
+        apx = 0
+        
     if odir is None:
         if laplace:
             odir = os.path.join(idir, "{}_{}_lap\\".format(wl, alt_km))
@@ -32,7 +38,7 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
         subprocess.call('mkdir "{}"'.format(odir), timeout=2, shell=True)
     assert os.path.exists(odir)
     
-    EOFF = np.array(glob.glob(idir + "*_{}km_{}.nc".format(alt_km, wl)))
+    EOFF = np.array(sorted(glob.glob(idir + "*_{}km_{}*.nc".format(alt_km, wl))))
     f_times = []
     for f in EOFF:
         try:
@@ -61,30 +67,56 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
                                   title = '{}, Alt = {} km'.format(t, EOF.alt_km.values),
                                   meridians=np.arange(-180,180.1,40), parallels=np.arange(-80,81,20),
                                   background_color='grey',
-                                  apex=True, mlat_levels=mlat_levels, mlat_colors='b',
+                                  apex=apx, mlat_levels=mlat_levels, mlat_colors='b',
                                   mlat_labels=0)
-            
-        OF = ax.pcolormesh(EOF.glon.values, EOF.glat.values, EOF.of.values, cmap='gray',
-                               vmin=0, vmax=1,
-                               transform=ccrs.PlateCarree())
-    #        
+        
+        sza = EOF.sza.values
+        night = np.copy(sza)
+        inight = (sza > 90)
         if laplace:
             lap = abs(ndimage.laplace(EOF.of.values))
             lap[lap<0.001] = np.nan
-            ax.contour(EOF.glon.values, EOF.glat.values, lap, cmap='terrain', 
-                              transform=ccrs.PlateCarree())        
+            lapm = 0.1
+            lap[lap>lapm] = lapm
+            night[inight] = 1
+            night[~inight] = 0
+            ax.pcolormesh(EOF.glon.values, EOF.glat.values, night, cmap='gray', 
+                        transform=ccrs.PlateCarree())
+            try:
+                ax.contour(EOF.glon.values, EOF.glat.values, lap, cmap='nipy_spectral', 
+                            levels=np.linspace(0.005, lapm, 20),
+                            transform=ccrs.PlateCarree())
+            except:
+                pass
     
-        try:
-            OFC = ax.contour(EOF.glon.values, EOF.glat.values, EOF.of.values, colors='r', linewidths=clw, 
-                             levels=np.linspace(0.0, 1.0, 25),
-                                     transform=ccrs.PlateCarree())
-            if clabel:
-                ax.clabel(OFC, OFC.levels, inline=True)
-        except:
-            pass
-        posn0 = ax.get_position()
-        cax = fig.add_axes([posn0.x0+posn0.width+0.01, posn0.y0, 0.02, posn0.height])
-        fig.colorbar(OF, cax=cax, label='EOF',format='%.2f')
+            try:
+                OFC = ax.contour(EOF.glon.values, EOF.glat.values, EOF.of.values, 
+                                 cmap='viridis', linewidths=clw, 
+                                 levels=np.linspace(0.0, 1.0, cmax),
+                                 transform=ccrs.PlateCarree())
+                if clabel:
+                    ax.clabel(OFC, OFC.levels, inline=True)
+            except:
+                pass
+        else:
+            OF = ax.pcolormesh(EOF.glon.values, EOF.glat.values, EOF.of.values, cmap='gray',
+                               vmin=0, vmax=1,
+                               transform=ccrs.PlateCarree())
+            try:
+                Zcont = EOF.of.values
+                Zcont[inight] = np.nan
+                OFC = ax.contour(EOF.glon.values, EOF.glat.values, Zcont, 
+                                 colors='r', linewidths=clw, 
+                                 levels=np.linspace(np.nanmin(Zcont), 1.0, cmax),
+                                 transform=ccrs.PlateCarree())
+                if clabel:
+                    ax.clabel(OFC, OFC.levels, inline=True, fmt='%.2f')
+            except:
+                pass
+            posn0 = ax.get_position()
+            cax = fig.add_axes([posn0.x0+posn0.width+0.01, posn0.y0, 0.02, posn0.height])
+            fig.colorbar(OF, cax=cax, label='EOF',format='%.2f')
+        
         EOF.close()
         
         if save:
