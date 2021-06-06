@@ -7,6 +7,7 @@ Created on Fri Apr 23 14:00:33 2021
 
 import os, subprocess, platform
 import xarray, datetime
+import numpy as np
 from eclipse import utils, eio
 from dateutil import parser
 import matplotlib.pyplot as plt
@@ -37,12 +38,15 @@ def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
             aiafolder= stream.get('sdodir')
         except BaseException as e:
             raise(e)
-    if aiafolder is None or (not os.path.exists(aiafolder)):
-        aiafolder = input("type path to the aiafolder: \n")
-    assert os.path.exists(aiafolder)
+    if len(wll) > 1 or np.squeeze(wll) != 'geo':
+        if aiafolder is None or (not os.path.exists(aiafolder)):
+            aiafolder = input("type path to the aiafolder: \n")
+        assert os.path.exists(aiafolder), "This folder doesn't exists"
+    
     if tsdo is None:
         tsdo = startend[0]
-    assert isinstance(parser.parse(tsdo), datetime.datetime)
+    assert isinstance(parser.parse(tsdo), datetime.datetime), "Time format wrong"
+    
     tlim = [parser.parse(startend[0]), parser.parse(startend[1])]
     ghgt = alt_km * 1000
     save_fn = os.path.join(odir, 

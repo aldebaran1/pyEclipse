@@ -13,6 +13,7 @@ import concurrent.futures
 RE = 6371 #km
 
 def get_sza(time, glon, glat, horizon=None, alt_km=None):
+    
     if horizon is None:
         if alt_km is None:
             alt_km = 0
@@ -30,14 +31,34 @@ def get_sza(time, glon, glat, horizon=None, alt_km=None):
         sun.compute(obs)
         sza = 90 - np.degrees(sun.alt) + horizon
         return sza
+    def _sza_time(t):
+        
+        obs = ephem.Observer()
+        obs.lat = np.deg2rad(glat)
+        obs.lon = np.deg2rad(glon)
+        obs.date = ephem.Date(t)
+        
+        sun = ephem.Sun()
+        sun.compute(obs)
+        sza = 90 - np.degrees(sun.alt) + horizon
+        return sza
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
-        sza_worker = np.asarray([ex.submit(_sza, glon.ravel()[i], glat.ravel()[i]) for i in range(glon.size)])
+    if isinstance(glon, np.ndarray) and isinstance(time, datetime):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
+            sza_worker = np.asarray([ex.submit(_sza, glon.ravel()[i], glat.ravel()[i]) for i in range(glon.size)])
 
-    sza = np.nan*np.ones(glon.ravel().size)
-    for i in range(sza_worker.size):
-        sza[i] = sza_worker[i].result()
-    sza = sza.reshape(glon.shape)
+        sza = np.nan*np.ones(glon.ravel().size)
+        for i in range(sza_worker.size):
+            sza[i] = sza_worker[i].result()
+        sza = sza.reshape(glon.shape)
+    
+    else:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
+            sza_worker = np.asarray([ex.submit(_sza_time, time[i]) for i in range(time.size)])
+
+        sza = np.nan*np.ones(time.size)
+        for i in range(sza_worker.size):
+            sza[i] = sza_worker[i].result()
     
     return sza
 
@@ -68,15 +89,29 @@ def get_parallactic_angle(time, glon, glat, ghgt):
         sun, moon = objects(time,glon,glat,ghgt)
         return parallactic_angle(sun.az, sun.dec, glat)
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
-        eta_worker = np.asarray([ex.submit(_eta, glon.ravel()[i], glat.ravel()[i]) for i in range(glon.size)])
+    def _eta_times(t):
+        sun, moon = objects(t, glon, glat, ghgt)
+        return parallactic_angle(sun.az, sun.dec, glat)
     
-    eta = np.nan*np.ones(glon.ravel().size)
-    for i in range(eta_worker.size):
-        eta[i] = eta_worker[i].result()
+    if isinstance(glon, np.ndarray) and isinstance(time, datetime):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
+            eta_worker = np.asarray([ex.submit(_eta, glon.ravel()[i], glat.ravel()[i]) for i in range(glon.size)])
         
-    return eta.reshape(glon.shape)
-
+        eta = np.nan*np.ones(glon.ravel().size)
+        for i in range(eta_worker.size):
+            eta[i] = eta_worker[i].result()
+        
+        return eta.reshape(glon.shape)
+    
+    else:
+        assert isinstance(time, np.ndarray)
+        eta = np.nan*np.ones(time.size)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
+            eta_worker = np.asarray([ex.submit(_eta_times, time[i]) for i in range(time.size)])
+        for i in range(eta_worker.size):
+            eta[i] = eta_worker[i].result()
+        return eta
+    
 def get_eof_mask_from_angles(image, sep, azm, eta, mrad, x0, y0, imres, pixscale):
     mx0, my0 = rotate(sep, azm-eta, 0.0, 0.0)
     mask = moon_mask(imres, mx0*pixscale + x0, my0*pixscale + y0, np.round(mrad, 8)*pixscale)

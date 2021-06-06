@@ -78,26 +78,28 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
             lap[lap<0.001] = np.nan
             lapm = 0.1
             lap[lap>lapm] = lapm
-            night[inight] = 1
-            night[~inight] = 0
-            ax.pcolormesh(EOF.glon.values, EOF.glat.values, night, cmap='gray', 
-                        transform=ccrs.PlateCarree())
+            night[inight] = 0
+            night[~inight] = 1
+            OF = ax.pcolormesh(EOF.glon.values, EOF.glat.values, EOF.of.values, cmap='gray',
+                               vmin=0, vmax=1,
+                               transform=ccrs.PlateCarree())
+            
             try:
                 ax.contour(EOF.glon.values, EOF.glat.values, lap, cmap='nipy_spectral', 
                             levels=np.linspace(0.005, lapm, 20),
                             transform=ccrs.PlateCarree())
             except:
                 pass
-    
-            try:
-                OFC = ax.contour(EOF.glon.values, EOF.glat.values, EOF.of.values, 
-                                 cmap='viridis', linewidths=clw, 
-                                 levels=np.linspace(0.0, 1.0, cmax),
-                                 transform=ccrs.PlateCarree())
-                if clabel:
-                    ax.clabel(OFC, OFC.levels, inline=True)
-            except:
-                pass
+            if clabel:
+                try:
+                    OFC = ax.contour(EOF.glon.values, EOF.glat.values, EOF.of.values, 
+                                     cmap='jet', linewidths=clw, 
+                                     levels=np.linspace(0.0, 1.0, cmax),
+                                     transform=ccrs.PlateCarree())
+                    if clabel:
+                        ax.clabel(OFC, OFC.levels, inline=True)
+                except:
+                    pass
         else:
             OF = ax.pcolormesh(EOF.glon.values, EOF.glat.values, EOF.of.values, cmap='gray',
                                vmin=0, vmax=1,

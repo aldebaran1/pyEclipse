@@ -61,6 +61,10 @@ def main(startend =None, wl = 193, alt_km=None, glon=None,glat=None,
         tsdo = parser.parse(tsdo)
     assert isinstance(tsdo, datetime)
     
+    if sdodir is None:
+        sdodir = input("Type path to the sdoaia directory:\n")
+    assert os.path.exists(sdodir)
+    
     #SDO Image
     if wl != 'geo':
         try: 
