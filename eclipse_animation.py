@@ -38,7 +38,7 @@ RE = 6371 #km
 #glon = -100
 #alt_km = 150
 #wl = 193
-#sdodir = 'G:\\My Drive\\eclipse\\sdoaia\\'
+
 #odir = 'G:\\My Drive\\eclipse\\mask\\20170821\\fov\\{}\\'.format(wl)
 cmap = 'gist_stern'
 
@@ -49,7 +49,7 @@ def main(startend =None, wl = 193, alt_km=None, glon=None,glat=None,
     global sep, RE
     assert odir is not None
     
-    fwddir = '{}E{}N{}H_{}{}'.format(glon, glat, int(alt_km),wl,sep) if glon > 0 else '{}E{}N{}H_{}{}'.format(360+glon, glat, int(alt_km),sep)
+    fwddir = '{}E{}N{}H_{}{}'.format(glon, glat, int(alt_km),wl,sep) if glon > 0 else '{}E{}N{}H_{}{}'.format(360+glon, glat, int(alt_km),wl,sep)
     odir = os.path.join(odir, fwddir)
     
     times = utils.get_times(parser.parse(startend[0]), parser.parse(startend[1]), dm=dt)
@@ -61,17 +61,24 @@ def main(startend =None, wl = 193, alt_km=None, glon=None,glat=None,
         tsdo = parser.parse(tsdo)
     assert isinstance(tsdo, datetime)
     
-    if sdodir is None:
-        sdodir = input("Type path to the sdoaia directory:\n")
-    assert os.path.exists(sdodir)
-    
     #SDO Image
     if wl != 'geo':
+        if platform.system() == 'Windows':
+            sdodir = 'G:\\My Drive\\eclipse\\sdoaia\\'
+        if sdodir is None:
+            sdodir = input("Type path to the sdoaia directory:\n")
+        assert os.path.exists(sdodir)
         try: 
             D = eio.sunaia(folder=sdodir, wl=int(wl), time=tsdo)
             image = D['AIA'+wl].values
+#            moon = plt.imshow(image, origin='lower',aspect='equal',
+#                           vmin=clim[0],vmax=clim[1],
+#                           extent=[-2047,2048,-2047,2048],
+#                           cmap=cmap)
+#            plt.show()
         except BaseException as e:
             raise (e)
+#        exit()
         
     for i,T in enumerate(times):
         sun, moon = utils.objects(T, glon, glat, ghgt)
@@ -163,7 +170,7 @@ if __name__ == '__main__':
     p.add_argument('--tsdo', help = 'Timestamp for the SDO image. If None, it is <tstart>', type = str, default = None)
     p.add_argument('-o', '--odir', help = 'Output directory.', default=None, type = str)
     p.add_argument('--sdodir', help = 'Directory with SDOAIA images.', default=None, type = str)
-    p.add_argument('--dt', help = 'time step - minutes', default = 5, type = int)
+    p.add_argument('--dt', help = 'time step - minutes', default = 5, type = float)
     p.add_argument('--wl', help = 'SDO wavelength in Angstrom. Default = 193. If uniform type "geo".', type = str, default='193')
     p.add_argument('--srad', help = 'Solar raii inflation factor. Defult=1.0.', type = float, default=1.0)
     p.add_argument('--clim', help = 'Colorbar limits / units caunts. Default 0 -- 1000', type = int, nargs=2, default = [0, 1000])
@@ -174,4 +181,4 @@ if __name__ == '__main__':
 #    
     main(startend=P.startend, glon=P.glon, glat=P.glat, alt_km=P.altkm, 
          tsdo = P.tsdo, dt = P.dt, wl = P.wl, odir = P.odir, sdodir = P.sdodir,
-         clim = P.clim, cmap = P.cmap, animation=P.animation, plot=P.plot)
+         clim = P.clim, cmap = P.cmap, animation=P.animation, plot=P.plot, srad_fact=P.srad)
