@@ -360,3 +360,26 @@ def mask_lonlat_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
         if verbose:
             print(datetime.now()-t0)
     return OF
+
+def mask_latalt_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
+    assert isinstance(ghgt, np.ndarray)
+    assert isinstance(glat, np.ndarray)
+    assert isinstance(glon, (int, float))
+    
+    OF = np.ones((glat.size, ghgt.size))
+    if verbose:
+        c = 1
+        C = glon.size*glat.size
+    for i in range(glat.size):
+        if verbose:
+            t0 = datetime.now()
+        for j in range(ghgt.size):
+            if verbose:
+                if c%1000 == 0:
+                    print ("{}/{}".format(c,C))
+            OF[i,j] =  mask_ephem_sdo(T, glon, glat[i], ghgt=ghgt[j], x0=SDO.x0, y0=SDO.y0, imsdo=SDO['AIA{}'.format(wl)].values, pixscale=SDO.pixscale)
+            if verbose:
+                c+=1
+        if verbose:
+            print(datetime.now()-t0)
+    return OF
