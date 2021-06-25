@@ -10,11 +10,12 @@ import xarray, datetime
 import numpy as np
 from eclipse import utils, eio
 from dateutil import parser
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
-         wll=None, dt=10, aiafolder=None, tsdo=None, save=1, plot=0
+         wll=None, dt=10, aiafolder=None, tsdo=None, srad=1.0,save=1, plot=0
          ):
     """
     dt = delta_t between t0 and t1 [minutes]
@@ -40,7 +41,10 @@ def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
             raise(e)
     if len(wll) > 1 or np.squeeze(wll) != 'geo':
         if aiafolder is None or (not os.path.exists(aiafolder)):
-            aiafolder = input("type path to the aiafolder: \n")
+            if platform.system() == 'Windows':
+                aiafolder = 'G:\\My Drive\\eclipse\\sdoaia\\'
+            else:
+                aiafolder = input("type path to the aiafolder: \n")
         assert os.path.exists(aiafolder), "This folder doesn't exists"
     
     if tsdo is None:
@@ -61,7 +65,7 @@ def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
     D = {}
     for i,wl in enumerate(wll):
         if wl == 'geo':
-            times, of = utils.eof_time(tlim[0], tlim[1], glon, glat, ghgt, dm=0, ds=dt)
+            times, of = utils.eof_time(tlim[0], tlim[1], glon, glat, ghgt, dm=0, ds=dt, srad_fact=srad)
         else:
             if isinstance(wl, str):
                 try:
@@ -72,15 +76,21 @@ def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
                     continue
     
         if plot:
-            plt.plot(times, of, label = wl)
-            plt.legend()
+            if wl == 'geo':
+                plt.plot(times, of, label = f'{wl} - {srad}')
+            else:
+                plt.plot(times, of, label = wl)
+            
         if i == 0:
             D['time'] = times
         D[str(wl)] = of
         
-        
+    
     if plot:
         plt.grid(axis='y')
+        plt.legend()
+        ax = plt.gca()
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         plt.show()
     if save:
         X = xarray.Dataset(D)
@@ -105,8 +115,10 @@ if __name__ == '__main__':
     p.add_argument('-w', '--wl', help='Choose the wavelengths. Comma separated, "geo" for geometric eclipse. Geo is default', type=str, default='geo', nargs='+')
     p.add_argument('--plot', help='Plot the lines?', action='store_true')
     p.add_argument('--save', help='Do not save the result', action='store_false')
+    p.add_argument('--srad', help='Altitude in km. Defult=0', default = 1.0, type=float)
     P = p.parse_args()
     
     main(startend=P.startend, glon=P.glon, glat=P.glat, alt_km=P.altkm, odir=P.odir,
-         wll=P.wl, dt=P.tres, aiafolder=P.sdodir, tsdo=None, save=P.save, plot=P.plot
+         wll=P.wl, dt=P.tres, aiafolder=P.sdodir, tsdo=P.tsdo, srad=P.srad,
+         save=P.save, plot=P.plot,
          )
