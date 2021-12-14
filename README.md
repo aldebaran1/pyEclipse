@@ -25,6 +25,15 @@ These level 1 image `.fits` files are annotated. We utilze *Astropy* to read `fi
 `pixel2arcsec = Data.header[CDELT1]`   
 `wavelength = Data.header[WAVELNTH]`
 
+The model takes into acount the altitude of an observer and a horizon, which also changes with altitude. This altitude dependance assumes *the Earth as a sphere*, which limits the model's accuracy at higher altitudes >~300 km and high solar zenith angles. Atmospehric refraction is parameterazed in pyEphem as a funcition of temperature, pressure and altitude. All these parameters are set default.
+
+### Setup
+Install the software framework  
+`python setup.py install`
+
+Import the functionalities in your python codes as   
+`from eclipse import utils,eio`
+
 ### Eclipse -- Observer's Point of View:
 
 Compute the visual eclipse transion for an observer's geolocation: *glon, glat, galt*. The Eclipse POV can be computed using SDO AIA images or assuming a uniform Sun with adjustable solar radii. POV Eclipse images are computed in a horizontal coordinate systems, also known as Altitude/azimute system. In this orientation, obserers pespectice is fixed in time and geolocation causing apparent roration of the Sun due to an (changing) angle between observer's zenith and Sun's north. This sngle is known as the parallactic angle. The parallactic angle was verificated against Peater Meadows routine and software *Helio*[1].  
@@ -36,6 +45,24 @@ Compute the visual eclipse transion for an observer's geolocation: *glon, glat, 
 
 Example of a POV EUV eclipse at 19.3 nm doe 2017 Eclipse:
 ![a](https://github.com/aldebaran1/pyEclipse/blob/master/misc/Aug2017_pov.gif)
+
+### Eclipse time series
+
+Compute the eclipse occultation as a function of time for a desired geographic location (glon, glat, galt) and eclipse mode. Choose between SDO AIA wavelengths you downloaded previously or GEOmetricaly uniform sun with adjustable solar radii. The timeseries profile is saved into a netCDF file by default.
+
+`
+pyhton mask_time_cli.py 2017-8-21T16:00 2017-8-21T19:45 -100 40.8 0 /path/to/output/directory/mask.nc --altkm 0 --tres 60 --sdodir /path/to/sdoaia/images/ --wl 94 193 211 geo --plot --srad 1.15
+`
+
+`--plot` option plots the output in the console  
+`--save` option does not save the output to data  
+`--wl` takes >1 argument. `--wl 94 193 211 geo` computes 4 profiles in the given order
+
+Example of a time series for August 2017 eclipse for parameters in the above command.
+![b](https://github.com/aldebaran1/pyEclipse/blob/master/misc/time_series_2017.png)
+
+
+### References
 
 [a] Lemen et al. (2012), Doi:10.1007/s11207-011-9776-8     
 [1] https://www.petermeadows.com/html/parallactic.html    
