@@ -65,13 +65,13 @@ Example of a time series for August 2017 eclipse for parameters in the above com
 
 Compute a lat/lon eclipse mask at a given altitude and time. Routines for computeing SDO-AIA and geometric masks have their own scripts. An eclipse mask for a uniform eclipse is computed pretty fast, it takes ~30 minutes to compute mask for a duration of an eclipse with a 5 minute time resolution. Computation od SDO AIA mask is considerably slower, becuase the Eclipse occultation funcion is computed as a ratio between the sum of all (unocculted) SDO AIA pixels devided by occulted SDO AIA pixels. This requres computation on 2D matrices of a size of 4096x4096 = 16.8M pixels for each observer's location. We make this computation only if a horizon or the moon apperars on the image. Othewise the finction returns 1 for SZA<90 and 0 for SZA>90. Horizon is continous.
 
-Compute a 2D eclipse mask at 18:00UT on the 21th August 2017 using 211A image in /path/to/sdoaia/images/aia_filename.fits. Output mask is saved as a netCDF file.
+Compute a 2D eclipse mask at 18:00UT on the 21th August 2017 using 211A image in /path/to/sdoaia/images/aia_filename.fits. Output mask is saved as a netCDF file.     
 `python sdomask_lonlat_cli.py 2017-8-21T18:00 2017-8-21T18:01 /path/to/output/aiamask/ --sdoaia /path/to/sdoaia/ --dlon 1 --dlat 1 --wl 211 --altkm 125`    
 `--dlon, --dlat` argumets set lon and lat resolution in degrees    
 `--tres` set at time resolution to compute masks between *time1 time2* arguments.
 `--sdodir` specify the directory where you have you sdo aia images  
 
-For a geometrically symmetric eclipse masks type:
+For a geometrically symmetric eclipse masks type:     
 `python geomask_lonlat_cli.py 2017-8-21T18:00 2017-8-21T18:01 /path/to/output/geomask/ --sdoaia /path/to/sdoaia/ --dlon 1 --dlat 1 --sunradii 1.15 --altkm 125`    
 
 Here are two examples:
@@ -80,8 +80,8 @@ Here are two examples:
 ### References
 
 [a] Lemen et al. (2012), Doi:10.1007/s11207-011-9776-8     
-[b] Huba nd Drob (2017), Doi:10.1002/2017GL073549
-[c] Mrak et al. (2018), Doi:10.1029/2017GL076771
-[d] Hairston et al. (2018), Doi:10.1029/2018GL077381
+[b] Huba nd Drob (2017), Doi:10.1002/2017GL073549    
+[c] Mrak et al. (2018), Doi:10.1029/2017GL076771     
+[d] Hairston et al. (2018), Doi:10.1029/2018GL077381    
 [1] https://www.petermeadows.com/html/parallactic.html    
 [2] https://github.com/aldebaran1/pyEclipse/py-lapse.git    
