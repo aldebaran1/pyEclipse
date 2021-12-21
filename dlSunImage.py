@@ -16,14 +16,20 @@ import os
 from argparse import ArgumentParser
 from subprocess import call
 #odir = os.getcwd() + '/aia/'
+from dateutil import parser
+from datetime import timedelta
 
-def dlSun(tlim: Union[list, ndarray] = [],
+def dlSun(tlim: Union[str, list, ndarray] = [],
           instrument: str = 'aia',
           wl: int = 193,
           odir: str = '',
           first: bool = False):
+    if len(tlim) == 1:
+        tlim_dt = [parser.parse(tlim[0]), parser.parse(tlim[0])+timedelta(minutes=1)]
     
-    assert isinstance(tlim[0], str), 'time limits must be stings'
+    else:
+        tlim_dt = [parser.parse(tlim[0]), parser.parse(tlim[1])]
+    tlim = array([tlim_dt[0].strftime('%Y/%m/%d %H:%M'), tlim_dt[1].strftime('%Y/%m/%d %H:%M')])
     tlim = array(tlim) if isinstance(tlim, list) else tlim
     assert tlim.shape[0] == 2, 'tlim must have length of 2 (start, stop) (yyyy/mm/dd hh:mm)'
     
@@ -51,7 +57,7 @@ def dlSun(tlim: Union[list, ndarray] = [],
 
 def main():
     p = ArgumentParser()
-    p.add_argument('startend', help='start/end times UTC e.g. "yyyy/mm/dd hh:mm" "yyyy/mm/dd hh:mm"', nargs=2)
+    p.add_argument('startend', help='start/end times UTC e.g. "yyyy-mm-ddThh:mm"', nargs='+')
     p.add_argument('-o', '--odir', help='directory to write downloaded FITS to', default='')
     p.add_argument('-i', '--instrument', help='aia or eit (SDO or SOHO), default is SDO-AIA', default='aia')
     p.add_argument('-w', '--wl', help='Choose the wavelength. Default is 193A for the SDO', default = 193)
