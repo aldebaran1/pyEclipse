@@ -74,8 +74,18 @@ Compute a 2D eclipse mask at 18:00UT on the 21th August 2017 using 211A image in
 For a geometrically symmetric eclipse masks type:     
 `python geomask_lonlat_cli.py 2017-8-21T18:00 2017-8-21T18:01 /path/to/output/geomask/ --sdoaia /path/to/sdoaia/ --dlon 1 --dlat 1 --sunradii 1.15 --altkm 125`    
 
-Here are two examples:
+Here are two examples:   
+SDO AIA 94A Penumbra at 150 km   
+![c](https://github.com/aldebaran1/pyEclipse/blob/master/misc/aug2017_aia94A.gif)      
+Uniform eclipse with inflated solar radii by 10%    
+![d](https://github.com/aldebaran1/pyEclipse/blob/master/misc/Aug2017_geo1.1.gif)      
 
+### Lateral cuts thru a penumbra: Lat-alt projection
+
+Compute a lateral cut tru a penumbra to analyze height dependence: tilt in the shadow as a function of latitude, spatial irregularities, etc. This functionality is not a command line interface, you need to adjust the input arguments in the code `geomask_latalt.py`
+
+Here is an example profile:    
+![e](https://github.com/aldebaran1/pyEclipse/blob/master/misc/lat_alt_2017.png)
 
 ### References
 
