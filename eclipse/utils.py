@@ -9,7 +9,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import ephem
 import concurrent.futures
-
+from scipy import ndimage
 RE = 6371 #km
 
 def get_sza(time, glon, glat, horizon=None, alt_km=None):
@@ -17,7 +17,8 @@ def get_sza(time, glon, glat, horizon=None, alt_km=None):
     if horizon is None:
         if alt_km is None:
             alt_km = 0
-#        re = 6371
+        elif isinstance(alt_km, (list, np.ndarray)):
+            alt_km = alt_km[0]
         horizon = -np.degrees(np.arccos(RE/(RE + alt_km)))
     
     def _sza(x, y):
@@ -43,6 +44,17 @@ def get_sza(time, glon, glat, horizon=None, alt_km=None):
         sza = 90 - np.degrees(sun.alt) + horizon
         return sza
     
+    def _sza_all(t, x, y):
+        obs = ephem.Observer()
+        obs.lat = np.deg2rad(y)
+        obs.lon = np.deg2rad(x)
+        obs.date = ephem.Date(t)
+        
+        sun = ephem.Sun()
+        sun.compute(obs)
+        sza = 90 - np.degrees(sun.alt) + horizon
+        return sza
+    
     if isinstance(glon, np.ndarray) and isinstance(time, datetime):
         with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
             sza_worker = np.asarray([ex.submit(_sza, glon.ravel()[i], glat.ravel()[i]) for i in range(glon.size)])
@@ -52,14 +64,21 @@ def get_sza(time, glon, glat, horizon=None, alt_km=None):
             sza[i] = sza_worker[i].result()
         sza = sza.reshape(glon.shape)
     
-    else:
+    elif isinstance(time, np.ndarray) and not isinstance(glon, np.ndarray):
         with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
             sza_worker = np.asarray([ex.submit(_sza_time, time[i]) for i in range(time.size)])
 
         sza = np.nan*np.ones(time.size)
         for i in range(sza_worker.size):
             sza[i] = sza_worker[i].result()
-    
+            
+    elif isinstance(time, np.ndarray) and isinstance(glon, np.ndarray) and isinstance(glat, np.ndarray):
+        sza = np.nan * np.ones(time.size)
+        for i in range(time.size):
+            sza[i] = _sza_all(time[i], glon[i], glat[i])
+            
+    else:
+        sza = _sza_time(time)
     return sza
 
 def get_angles(time, glon, glat, ghgt=0):
@@ -103,15 +122,17 @@ def get_parallactic_angle(time, glon, glat, ghgt):
         
         return eta.reshape(glon.shape)
     
-    else:
-        assert isinstance(time, np.ndarray)
+    elif isinstance(time, np.ndarray):
         eta = np.nan*np.ones(time.size)
         with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
             eta_worker = np.asarray([ex.submit(_eta_times, time[i]) for i in range(time.size)])
         for i in range(eta_worker.size):
             eta[i] = eta_worker[i].result()
         return eta
-    
+    else:
+        print ('a)')
+        eta = _eta(glon, glat)
+        return eta
 def get_eof_mask_from_angles(image, sep, azm, eta, mrad, x0, y0, imres, pixscale):
     mx0, my0 = rotate(sep, azm-eta, 0.0, 0.0)
     mask = moon_mask(imres, mx0*pixscale + x0, my0*pixscale + y0, np.round(mrad, 8)*pixscale)
@@ -242,7 +263,7 @@ def get_EOF(sr, mr, mx0, my0):
 #        of = get_EOF(srad, mrad, mx0, my0)
 #        return of
     
-def eclipse_geo_ephem(T, glon, glat, ghgt=0, srad_fact=1, plot=0):
+def mask_geo_ephem(T, glon, glat, ghgt=0, srad_fact=1, plot=0):
     sun, moon = objects(T, glon, glat, ghgt)
     srad = np.round(sun.radius * srad_fact, 8)
     mrad = np.round(moon.radius, 8)
@@ -256,7 +277,7 @@ def eclipse_geo_ephem(T, glon, glat, ghgt=0, srad_fact=1, plot=0):
         of = get_EOF(srad, mrad, mx0, my0)
         return of
 
-def mask_ephem_sdo(T, glon, glat, ghgt, x0, y0, imsdo, pixscale):
+def mask_sdo_ephem(T, glon, glat, ghgt, x0, y0, imsdo, pixscale):
     sun, moon = objects(T,glon,glat,ghgt)
     horizon = (-np.arccos(RE / (RE + ghgt/1e3)) - sun.alt - sun.radius)
     sep = separation(sun.az, sun.alt, moon.az, moon.alt) 
@@ -266,7 +287,8 @@ def mask_ephem_sdo(T, glon, glat, ghgt, x0, y0, imsdo, pixscale):
     else:
         hmask = np.ones_like(imsdo)
     eta = parallactic_angle(sun.az, sun.dec, glat)
-    if (sep*pixscale) < (imsdo.shape[0]*1.4142+np.round(moon.radius, 8)*pixscale):
+#    if (sep*pixscale) < (imsdo.shape[0]*1.4142+np.round(moon.radius, 8)*pixscale):
+    if (sep*pixscale) < (imsdo.shape[0]+np.round(moon.radius, 8)*pixscale):
         
         azm = azimuth(sun.az, sun.alt, moon.az, moon.alt)
         # Rotation of the moon if ~100x faster than rotation of the Sun for the parallactinc angle
@@ -291,7 +313,7 @@ def eof_time(t0, t1, glon, glat, ghgt, srad_fact=1, dm=10, ds=0, mode='ephem'):
 #            if mode == 'novas':
 #                OF[i, sf] = eclipse_geo_novas(T, glon=glon, glat=glat, ghgt=ghgt, srad_fact=srad_factor)
 #            else:
-            OF[i, sf] = eclipse_geo_ephem(T, glon=glon, glat=glat, ghgt=ghgt, srad_fact=srad_factor)
+            OF[i, sf] = mask_geo_ephem(T, glon=glon, glat=glat, ghgt=ghgt, srad_fact=srad_factor)
     OF[OF<0] = 0
     return times, np.squeeze(OF)
 
@@ -311,7 +333,7 @@ def mask_latalt_geo(T, glat, ghgt, glon0=0, srad_fact=1, mode='novas'):
 #                if mode == 'novas':
 #                    OF[i,j,s] = eclipse_geo_novas(T=T, glon=glon0, glat=lat, ghgt=alt, srad_fact=srad_fact)
 #                else:
-                OF[i,j,s] = eclipse_geo_ephem(T=T, glon=glon0, glat=lat, ghgt=alt, srad_fact=srad_fact)
+                OF[i,j,s] = mask_geo_ephem(T=T, glon=glon0, glat=lat, ghgt=alt, srad_fact=srad_fact)
     return np.squeeze(OF)
 
 def mask_lonlat_geo(T, glon, glat, ghgt=0, srad_fact=1, mode='novas'):
@@ -326,18 +348,21 @@ def mask_lonlat_geo(T, glon, glat, ghgt=0, srad_fact=1, mode='novas'):
 #            if mode == 'novas':
 #                OF[i,j] = eclipse_geo_novas(T=T, glon=lon, glat=lat, ghgt=ghgt, srad_fact=srad_fact)
 #            else:
-            OF[i,j] = eclipse_geo_ephem(T=T, glon=lon, glat=lat, ghgt=ghgt, srad_fact=srad_fact)
+            OF[i,j] = mask_geo_ephem(T=T, glon=lon, glat=lat, ghgt=ghgt, srad_fact=srad_fact)
     return np.squeeze(OF)
 
 #%% SDO AIA
-def eof_time_sdo(SDO, t0, t1, tsdo, glon, glat, ghgt, wl=193, dm=10,ds=0):
+def eof_time_sdo(SDO, t0, t1, glon, glat, ghgt, wl=193, dm=10,ds=0):
 
     times = get_times(t0,t1,dm=dm,ds=ds)
     OF = np.ones(times.size)
+    imsdo = SDO['AIA{}'.format(wl)].values
+    if glat < 0:
+        imsdo = ndimage.rotate(imsdo, 180)
     for i,T in enumerate(times):
         if (i+1)%10 == 0:
             print ("Processing {}/{}".format(i+1, times.size))
-        OF[i] = mask_ephem_sdo(T, glon, glat, ghgt, SDO.x0, SDO.y0, SDO['AIA{}'.format(wl)].values, SDO.pixscale)
+        OF[i] = mask_sdo_ephem(T, glon, glat, ghgt, SDO.x0, SDO.y0, imsdo, SDO.pixscale)
     return times, OF
 
 def mask_lonlat_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
@@ -354,7 +379,7 @@ def mask_lonlat_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
             if verbose:
                 if c%1000 == 0:
                     print ("{}/{}".format(c,C))
-            OF[i,j] =  mask_ephem_sdo(T, glon[i], glat[j], ghgt=ghgt, x0=SDO.x0, y0=SDO.y0, imsdo=SDO['AIA{}'.format(wl)].values, pixscale=SDO.pixscale)
+            OF[i,j] =  mask_sdo_ephem(T, glon[i], glat[j], ghgt=ghgt, x0=SDO.x0, y0=SDO.y0, imsdo=SDO['AIA{}'.format(wl)].values, pixscale=SDO.pixscale)
             if verbose:
                 c+=1
         if verbose:
@@ -377,9 +402,24 @@ def mask_latalt_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
             if verbose:
                 if c%1000 == 0:
                     print ("{}/{}".format(c,C))
-            OF[i,j] =  mask_ephem_sdo(T, glon, glat[i], ghgt=ghgt[j], x0=SDO.x0, y0=SDO.y0, imsdo=SDO['AIA{}'.format(wl)].values, pixscale=SDO.pixscale)
+            OF[i,j] =  mask_sdo_ephem(T, glon, glat[i], ghgt=ghgt[j], x0=SDO.x0, y0=SDO.y0, imsdo=SDO['AIA{}'.format(wl)].values, pixscale=SDO.pixscale)
             if verbose:
                 c+=1
         if verbose:
             print(datetime.now()-t0)
     return OF
+
+# Spacecraft
+def eof_satellite(times, glon, glat, ghgt, SDO=None, srad=1.0, wl='geo', verbose=False):
+    OF = np.zeros(times.size)
+    for i,T in enumerate(times):
+        if verbose:
+            if (i+1)%10 == 0:
+                print ("Processing {}/{}".format(i+1, times.size))
+        sza = get_sza(T, glon[i], glat[i], alt_km=ghgt[i]*1e3)
+        if sza < 95:
+            if SDO is not None:
+                OF[i] = mask_sdo_ephem(T, glon[i], glat[i], ghgt[i]*1e3, SDO.x0, SDO.y0, SDO['AIA{}'.format(wl)].values, SDO.pixscale)
+            else:
+                OF[i] = mask_geo_ephem(T, glon[i], glat[i], ghgt[i]*1e3, srad_fact=srad)
+    return times, OF
