@@ -32,14 +32,15 @@ LEAP_dates = ['1 Jan 1972', '1 Jul 1972', '1 Jan 1973',
 oneradian_arcsec = (180 * 3600) / pi
 ddd2D = {'Jan': 1, 'Jul': 7}
 
-def sunaia(folder: str = None, 
-           wl: int = 193, 
-           time: Union[datetime, str] = None):
-    if folder is None:
-        folder = os.path.join(os.getcwd(), 'aia', "")
+def get_filename(folder, wl, time, insturment):
+    
+    assert (os.path.exists(folder)), f'{folder} doesnt exists'
         
     if time is None:
-        seekfor = '*{}a*.fits'.format(wl)
+        if insturment == 'aia':
+            seekfor = '*{}a*.fits'.format(wl)
+        elif insturment == 'eit':
+            seekfor = 'efz{}_*'.format(time.strftime)
         try:
             fn = glob(folder + seekfor)[0]
             print ("File choosen: " + os.path.split(fn)[1])
@@ -50,48 +51,136 @@ def sunaia(folder: str = None,
             time = parser.parse(time)
         assert isinstance(time, datetime), 'Time must be in appropraite format (str or datetime)'
         
-        wlfilt = '*{}a*.fits'.format(wl)
-        fnlist = glob(folder + wlfilt)
-        names = [os.path.split(ff)[1] for ff in fnlist]
-        if len(str(wl)) == 3:
-            filedates = [n[14:27].replace('_', '-').upper() + n[27:33].replace('_', ':') for n in names]
-        elif len(str(wl)) == 2:
-            filedates = [n[13:26].replace('_', '-').upper() + n[26:32].replace('_', ':') for n in names]
-        elif len(str(wl)) == 4:
-            filedates = [n[15:28].replace('_', '-').upper() + n[28:34].replace('_', ':') for n in names]
-        else:
-            raise ('Wrong wavelength argument')
-        fdate_dt = array([parser.parse(d) for d in filedates])
-        idX = abs(fdate_dt - time).argmin()
+        if insturment == 'aia':
+            wlfilt = '*{}a*.fits'.format(wl)
+            fnlist = glob(folder + wlfilt)
+            names = [os.path.split(ff)[1] for ff in fnlist]
+            if len(str(wl)) == 3:
+                filedates = [n[14:27].replace('_', '-').upper() + n[27:33].replace('_', ':') for n in names]
+            elif len(str(wl)) == 2:
+                filedates = [n[13:26].replace('_', '-').upper() + n[26:32].replace('_', ':') for n in names]
+            elif len(str(wl)) == 4:
+                filedates = [n[15:28].replace('_', '-').upper() + n[28:34].replace('_', ':') for n in names]
+            else:
+                raise ('Wrong wavelength argument')
+            fdate_dt = array([parser.parse(d) for d in filedates])
+        elif insturment == 'eit':
+            wlfilt = 'efz{}*'.format(time.strftime('%Y%m%d'))
+            fnlist = glob(folder + wlfilt)
+            names = [os.path.split(ff)[1] for ff in fnlist]
+            filedates = [f'{n[3:11]}T{n[12:]}' for n in names]
+            fdate_dt = np.array([parser.parse(d) for d in filedates])
         
+        idX = abs(fdate_dt - time).argmin()
+        if (abs(fdate_dt - time)[idX].total_seconds()) > 12*60*60:
+            raise ValueError ("Closest SDO image is more than 12 hours away.")
         fn = fnlist[idX]
         print ("File choosen: " + os.path.split(fn)[1])
-            
+    return fn
+
+def load(folder: str = None, 
+           wl: int = 193, 
+           time: Union[datetime, str] = None,
+           instrument: str = 'aia') -> xarray.Dataset:
+    
+    assert (instrument in ('aia' , 'eit', 'suvi')), "Currently we support SDO AIA, SOHO EIT, and GOES-R SUVI telescopes"
+    
+    if not os.path.isfile(folder):
+        fn = get_filename(folder, wl, time, instrument)
+    else:
+        fn = folder
+    
+    ix = 1 if instrument == 'aia' else 0
+    
     try:
-        imdata = fits.open(fn)
+        FITS = fits.open(fn)
     except Exception as e:
         raise (e)
-    imtime = parser.parse(imdata[1].header['T_REC'])
-    imx0 = imdata[1].header['CRPIX1']
-    imy0 = imdata[1].header['CRPIX2']
-    pixel2arcsec = imdata[1].header['CDELT1']
-    wl = imdata[1].header['WAVELNTH']
+    FITS[ix].verify('fix')
+    bitpix = FITS[ix].header['BITPIX']
+    imtime =  parser.parse(FITS[ix].header['DATE-OBS']) if ix == 1  else parser.parse(FITS[ix].header['DATE_OBS'])
+    imx0 = FITS[ix].header['CRPIX1']
+    imy0 = FITS[ix].header['CRPIX2']
+    pixel2arcsec = FITS[ix].header['CDELT1']
+    wl = FITS[ix].header['WAVELNTH']
     
-    assert (imdata[1].header['BITPIX'] == 16), 'Assure the data encoded with uint-16bit'
+    assert (FITS[ix].header['BITPIX'] == bitpix), 'Assure the data encoded with uint-16bit'
     
-    imdata[1].verify('fix')
-    im = float64(imdata[1].data.squeeze())
+    im = float64(FITS[ix].data.squeeze())
     # Set data outside the detector values to 0
     im[im < 0] = 0
     im[im > 2**16] = 0
     # Construct  xarray for easier data manipulation and access
-    D = xarray.Dataset({'AIA'+str(wl): (('x', 'y'), im)})
+    D = xarray.Dataset({f'{instrument.upper()}{wl}': (('x', 'y'), im)})
     D.attrs['time'] = imtime
     D.attrs['x0'] = imx0
     D.attrs['y0'] = imy0
     D.attrs['pxarcsec'] = pixel2arcsec
     D.attrs['pixscale'] = oneradian_arcsec / pixel2arcsec
+    
     return D
+
+#def sunaia(folder: str = None, 
+#           wl: int = 193, 
+#           time: Union[datetime, str] = None):
+#    if folder is None:
+#        folder = os.path.join(os.getcwd(), 'aia', "")
+#        
+#    if time is None:
+#        seekfor = '*{}a*.fits'.format(wl)
+#        try:
+#            fn = glob(folder + seekfor)[0]
+#            print ("File choosen: " + os.path.split(fn)[1])
+#        except Exception as e:
+#            raise (e)
+#    else:
+#        if isinstance(time, str):
+#            time = parser.parse(time)
+#        assert isinstance(time, datetime), 'Time must be in appropraite format (str or datetime)'
+#        
+#        wlfilt = '*{}a*.fits'.format(wl)
+#        fnlist = glob(folder + wlfilt)
+#        names = [os.path.split(ff)[1] for ff in fnlist]
+#        if len(str(wl)) == 3:
+#            filedates = [n[14:27].replace('_', '-').upper() + n[27:33].replace('_', ':') for n in names]
+#        elif len(str(wl)) == 2:
+#            filedates = [n[13:26].replace('_', '-').upper() + n[26:32].replace('_', ':') for n in names]
+#        elif len(str(wl)) == 4:
+#            filedates = [n[15:28].replace('_', '-').upper() + n[28:34].replace('_', ':') for n in names]
+#        else:
+#            raise ('Wrong wavelength argument')
+#        fdate_dt = array([parser.parse(d) for d in filedates])
+#        idX = abs(fdate_dt - time).argmin()
+#        if (abs(fdate_dt - time)[idX].total_seconds()) > 12*60*60:
+#            raise ValueError ("Closest SDO image is more than 12 hours away.")
+#        fn = fnlist[idX]
+#        print ("File choosen: " + os.path.split(fn)[1])
+#            
+#    try:
+#        imdata = fits.open(fn)
+#    except Exception as e:
+#        raise (e)
+#    imtime = parser.parse(imdata[1].header['T_REC'])
+#    imx0 = imdata[1].header['CRPIX1']
+#    imy0 = imdata[1].header['CRPIX2']
+#    pixel2arcsec = imdata[1].header['CDELT1']
+#    wl = imdata[1].header['WAVELNTH']
+#    
+#    assert (imdata[1].header['BITPIX'] == 16), 'Assure the data encoded with uint-16bit'
+#    
+#    imdata[1].verify('fix')
+#    im = float64(imdata[1].data.squeeze())
+#    # Set data outside the detector values to 0
+#    im[im < 0] = 0
+#    im[im > 2**16] = 0
+#    # Construct  xarray for easier data manipulation and access
+#    D = xarray.Dataset({'AIA'+str(wl): (('x', 'y'), im)})
+#    D.attrs['time'] = imtime
+#    D.attrs['x0'] = imx0
+#    D.attrs['y0'] = imy0
+#    D.attrs['pxarcsec'] = pixel2arcsec
+#    D.attrs['pixscale'] = oneradian_arcsec / pixel2arcsec
+#    return D
 
 def spaceTimeCorrections(year: int = None, month: int = None, day: int = None):
     """
@@ -161,34 +250,3 @@ def spaceTimeCorrections(year: int = None, month: int = None, day: int = None):
     
     return params
 #
-#def parallacticAngle(sazm, sdec, glat):
-#    sineta = np.sin(sazm) * np.cos(np.radians(glat)) / np.cos(sdec)
-#    return -np.arcsin(sineta)
-
-
-
-#def parallacticAngle(sazm, selv, glat):
-#    DOUG ????
-#    """
-#    Compute solar parallactic angle. This is an angle between loacl (observer's)
-#    zenith and sun's axis of rotation.
-#    
-#    Parameters
-#    ----------
-#    sazm: float
-#          Solar azimuth angle
-#    selev: float
-#          Solar elevation angle
-#    glat: float
-#         geographic latitude in WSG84 [degree]
-#    Returns
-#    ---------
-#    float: solar parallactic angle
-#    """
-#    
-#    olat = np.deg2rad(glat)
-#    a = -np.cos(olat) * np.sin(sazm)
-#    b = np.sin(olat) * np.cos(selv) - (np.cos(olat) * np.sin(selv) * np.cos(sazm))
-#    eta = np.arctan2(a,b)
-#    
-#    return eta
