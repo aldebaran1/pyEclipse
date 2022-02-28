@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Union
 from numpy import float64, pi, array, ones, arange
 from astropy.io import fits
+from scipy import ndimage
 
 # https://ftp.iana.org/tz/tzdb-2019a/leap-seconds.list
 LEAPS = arange(10, 38)
@@ -32,7 +33,7 @@ LEAP_dates = ['1 Jan 1972', '1 Jul 1972', '1 Jan 1973',
 oneradian_arcsec = (180 * 3600) / pi
 ddd2D = {'Jan': 1, 'Jul': 7}
 
-def get_filename(folder, wl, time, insturment):
+def get_filename(folder, wl, time, insturment, sn=None):
     
     assert (os.path.exists(folder)), f'{folder} doesnt exists'
         
@@ -51,9 +52,9 @@ def get_filename(folder, wl, time, insturment):
             time = parser.parse(time)
         assert isinstance(time, datetime), 'Time must be in appropraite format (str or datetime)'
         
-        if insturment == 'aia':
+        if insturment in ('aia', 'AIA'):
             wlfilt = '*{}a*.fits'.format(wl)
-            fnlist = glob(folder + wlfilt)
+            fnlist = np.array(glob(folder + wlfilt))
             names = [os.path.split(ff)[1] for ff in fnlist]
             if len(str(wl)) == 3:
                 filedates = [n[14:27].replace('_', '-').upper() + n[27:33].replace('_', ':') for n in names]
@@ -64,13 +65,22 @@ def get_filename(folder, wl, time, insturment):
             else:
                 raise ('Wrong wavelength argument')
             fdate_dt = array([parser.parse(d) for d in filedates])
-        elif insturment == 'eit':
+        elif insturment in ('eit', 'EIT'):
             wlfilt = 'efz{}*'.format(time.strftime('%Y%m%d'))
-            fnlist = glob(folder + wlfilt)
+            fnlist = np.array(glob(folder + wlfilt))
             names = [os.path.split(ff)[1] for ff in fnlist]
             filedates = [f'{n[3:11]}T{n[12:]}' for n in names]
             fdate_dt = np.array([parser.parse(d) for d in filedates])
-        
+            
+        elif insturment in ('suvi', 'SUVI'):
+            fnlist = np.array(glob(folder + '*.fits'))
+            suvi_wl = np.array([int(os.path.split(f)[1][13:16]) for f in fnlist])
+            suvi_sn = np.array([int(os.path.split(f)[1][18:20]) for f in fnlist])
+            suvi_dates = np.array([parser.parse(os.path.split(f)[1][22:37]) for f in fnlist])
+            
+            idr = np.logical_and(suvi_sn==sn, suvi_wl==wl)
+            fdate_dt = suvi_dates[idr]
+            fnlist = fnlist[idr]
         idX = abs(fdate_dt - time).argmin()
         if (abs(fdate_dt - time)[idX].total_seconds()) > 12*60*60:
             raise ValueError ("Closest SDO image is more than 12 hours away.")
@@ -81,16 +91,17 @@ def get_filename(folder, wl, time, insturment):
 def load(folder: str = None, 
            wl: int = 193, 
            time: Union[datetime, str] = None,
+           sn: int = None,
            instrument: str = 'aia') -> xarray.Dataset:
     
-    assert (instrument in ('aia' , 'eit', 'suvi')), "Currently we support SDO AIA, SOHO EIT, and GOES-R SUVI telescopes"
+    assert (instrument in ('aia' , 'eit', 'suvi', 'AIA', 'EIT', 'SUVI')), "Currently we support SDO AIA, SOHO EIT, and GOES-R SUVI telescopes"
     
     if not os.path.isfile(folder):
-        fn = get_filename(folder, wl, time, instrument)
+        fn = get_filename(folder, wl, time, instrument, sn)
     else:
         fn = folder
     
-    ix = 1 if instrument == 'aia' else 0
+    ix = 1 if instrument in ('aia', 'AIA', 'suvi', 'SUVI') else 0
     
     try:
         FITS = fits.open(fn)
@@ -107,6 +118,8 @@ def load(folder: str = None,
     assert (FITS[ix].header['BITPIX'] == bitpix), 'Assure the data encoded with uint-16bit'
     
     im = float64(FITS[ix].data.squeeze())
+    if instrument in ('eit', 'EIT'):
+        im = ndimage.rotate(im, 180)
     # Set data outside the detector values to 0
     im[im < 0] = 0
     im[im > 2**16] = 0

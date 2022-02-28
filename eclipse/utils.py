@@ -277,7 +277,7 @@ def mask_geo_ephem(T, glon, glat, ghgt=0, srad_fact=1, plot=0):
         of = get_EOF(srad, mrad, mx0, my0)
         return of
 
-def mask_sdo_ephem(T, glon, glat, ghgt, x0, y0, imsdo, pixscale):
+def mask_sdo_ephem(T, glon, glat, ghgt, x0, y0, imsdo, pixscale, use_parallactic_angle=1):
     sun, moon = objects(T,glon,glat,ghgt)
     horizon = (-np.arccos(RE / (RE + ghgt/1e3)) - sun.alt - sun.radius)
     sep = separation(sun.az, sun.alt, moon.az, moon.alt) 
@@ -286,7 +286,10 @@ def mask_sdo_ephem(T, glon, glat, ghgt, x0, y0, imsdo, pixscale):
         hmask = horizon_mask(horizon=horizon, selv=sun.alt, imsdo=imsdo, pixscale=pixscale, y0=y0)
     else:
         hmask = np.ones_like(imsdo)
-    eta = parallactic_angle(sun.az, sun.dec, glat)
+    if use_parallactic_angle:
+        eta = parallactic_angle(sun.az, sun.dec, glat)
+    else:
+        eta = 0
 #    if (sep*pixscale) < (imsdo.shape[0]*1.4142+np.round(moon.radius, 8)*pixscale):
     if (sep*pixscale) < (imsdo.shape[0]+np.round(moon.radius, 8)*pixscale):
         
@@ -356,9 +359,12 @@ def eof_time_sdo(SDO, t0, t1, glon, glat, ghgt, wl=193, dm=10,ds=0):
 
     times = get_times(t0,t1,dm=dm,ds=ds)
     OF = np.ones(times.size)
-    imsdo = SDO['AIA{}'.format(wl)].values
+    instrument = list(SDO.variables)[0][:3]
+    imsdo = SDO[list(SDO.variables)[0]].values
+    if instrument == 'EIT':
+        imsdo = np.subtract(ndimage.rotate(imsdo, 180), 900)
     if glat < 0:
-        imsdo = ndimage.rotate(imsdo, 180)
+        imsdo = np.subtract(ndimage.rotate(imsdo, 180), 900)
     for i,T in enumerate(times):
         if (i+1)%10 == 0:
             print ("Processing {}/{}".format(i+1, times.size))
@@ -410,16 +416,19 @@ def mask_latalt_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
     return OF
 
 # Spacecraft
-def eof_satellite(times, glon, glat, ghgt, SDO=None, srad=1.0, wl='geo', verbose=False):
+def eof_satellite(times, glon, glat, ghgt, SDO=None, srad=1.0, wl='geo', 
+                  use_parallactic_angle=1, verbose=False):
     OF = np.zeros(times.size)
     for i,T in enumerate(times):
         if verbose:
             if (i+1)%10 == 0:
                 print ("Processing {}/{}".format(i+1, times.size))
-        sza = get_sza(T, glon[i], glat[i], alt_km=ghgt[i]*1e3)
+        sza = get_sza(T, glon[i], glat[i], alt_km=ghgt[i])
         if sza < 95:
             if SDO is not None:
-                OF[i] = mask_sdo_ephem(T, glon[i], glat[i], ghgt[i]*1e3, SDO.x0, SDO.y0, SDO['AIA{}'.format(wl)].values, SDO.pixscale)
+                OF[i] = mask_sdo_ephem(T, glon[i], glat[i], ghgt[i]*1e3, SDO.x0, SDO.y0, 
+                  SDO['AIA{}'.format(wl)].values, SDO.pixscale,
+                  use_parallactic_angle=use_parallactic_angle)
             else:
                 OF[i] = mask_geo_ephem(T, glon[i], glat[i], ghgt[i]*1e3, srad_fact=srad)
     return times, OF
