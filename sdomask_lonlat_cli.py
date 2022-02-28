@@ -20,7 +20,7 @@ def _eof(sep, azm, eta, mrad, wl):
 
 def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km=0, 
          wl=193, dlon=None, dlat=None, dt=10, j=1,
-         aiafolder=None,
+         aiafolder=None, instrument=None, parallactic_angle=False, sn=None
          ):
     global SDO, x0, y0, imres, rad2pix
     """
@@ -56,7 +56,8 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
     glon = np.arange(glonlim[0], glonlim[1], dlon)
     glat = np.arange(glatlim[0], glatlim[1], dlat)
     ghgt = alt_km * 1000
-    SDO = eio.sunaia(folder=aiafolder, wl=wl, time=parser.parse(tsdo))
+    SDO = eio.load(folder=aiafolder, wl=wl, time=parser.parse(tsdo), 
+                   instrument=instrument, sn=sn)
     x0, y0 = SDO.x0, SDO.y0
     
     glon_grid, glat_grid = np.meshgrid(glon,glat)
@@ -65,15 +66,17 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
     critical_distance = imres/2 + imres*1.414
     
     for it,T in enumerate(times):
-        save_fn = odir + "{}_{}km_{}.nc".format(T.strftime("%Y%m%d%H%M%S"), int(alt_km), wl)
+        save_fn = odir + "{}_{}km_{}_{}.nc".format(T.strftime("%Y%m%d%H%M%S"), int(alt_km), wl, int(parallactic_angle))
         if not os.path.exists(save_fn):
             print ("Processing {} // {}/{}".format(T, it+1, times.size))
             tt = datetime.now()
             of = np.nan * np.ones((glat.size, glon.size))
             sza = utils.get_sza(T,glon=glon_grid,glat=glat_grid,alt_km=alt_km)
             sep, azm, mrad = utils.get_angles(T, glon=glon_grid, glat=glat_grid, ghgt=ghgt)
-            eta = utils.get_parallactic_angle(T, glon=glon_grid, glat=glat_grid, ghgt=ghgt)
-            
+            if parallactic_angle:
+                eta = utils.get_parallactic_angle(T, glon=glon_grid, glat=glat_grid, ghgt=ghgt)
+            else:
+                eta = np.zeros(glon_grid.shape)
             mask = (sep*rad2pix > critical_distance)
             of[mask] = 1.0
             mask = (sza > 90)
@@ -97,7 +100,8 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
             X['time'] = T
             X['alt_km'] = alt_km
             X['wl'] = wl
-            X['time_sdo'] = SDO.time
+            X['time_image'] = SDO.time
+            X['instrument'] = instrument
             X.to_netcdf(save_fn)
             X.close()
 
@@ -114,10 +118,13 @@ if __name__ == '__main__':
     p.add_argument('--sdodir', help='Folder to SDO images', default=None)
     p.add_argument('-w', '--wl', help='Choose the wavelength. Default is 193A for the SDO', default = 193, type=int)
     p.add_argument('--altkm', help='altitude in km', default = 350, type=int)
+    p.add_argument('--sn', help='GOES satellite number', default = 16, type=int)
+    p.add_argument('-i', '--instrument', help='AIA, SUVI or EIT', default = 'aia', type=str)
     p.add_argument('-j', '--proc', help='Numer of parallel processes', default=10, type=int)
     
     P = p.parse_args()
     
     main(P.startend, odir=P.odir, dt = P.tres, tsdo = P.tsdo,
          glonlim=P.glon, glatlim=P.glat, dlon=P.dlon, dlat=P.dlat,
-         wl = P.wl, alt_km= P.altkm, aiafolder = P.sdodir, j=P.proc)
+         wl = P.wl, alt_km= P.altkm, aiafolder = P.sdodir, j=P.proc,
+         instrument=P.instrument, sn=P.sn)
