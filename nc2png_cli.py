@@ -65,16 +65,17 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
         idt = (f_times >= tlim[0]) & (f_times <= tlim[1])
     #
     F = EOFF[idt]
-    
-    
     #
     for i,f in enumerate(F):
         t = f_times[idt][i]
         save_fn = odir + "{}_{}_{}.png".format(t.strftime("%Y%m%d_%H%M%S"), alt_km, wl)
         EOF = xarray.open_dataset(f)
         if wl != 'geo':
-            t_sdo = EOF.time_sdo.values.astype('datetime64[s]').astype(datetime.datetime).strftime("%Y-%m-%d %H:%M")
-            title = '{}, Alt = {} km\nTSDO = {}'.format(t, EOF.alt_km.values, t_sdo)
+            try:
+                t_sdo = EOF.time_sdo.values.astype('datetime64[s]').astype(datetime.datetime).strftime("%Y-%m-%d %H:%M")
+            except: 
+                t_sdo = EOF.time_image.values.astype('datetime64[s]').astype(datetime.datetime).strftime("%Y-%m-%d %H:%M")
+            title = '{}, Alt = {} km\nT-Image = {}'.format(t, EOF.alt_km.values, t_sdo)
         else:
             title = '{}, Alt = {} km'.format(t, EOF.alt_km.values)
         fig, ax = gm.plotCartoMap(projection=projection, lon0=lon0, lat0=lat0,

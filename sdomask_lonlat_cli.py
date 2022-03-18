@@ -121,10 +121,11 @@ if __name__ == '__main__':
     p.add_argument('--sn', help='GOES satellite number', default = 16, type=int)
     p.add_argument('-i', '--instrument', help='AIA, SUVI or EIT', default = 'aia', type=str)
     p.add_argument('-j', '--proc', help='Numer of parallel processes', default=10, type=int)
+    p.add_argument('--eta', help='Utilize parallactic angle?', action='store_true')
     
     P = p.parse_args()
     
     main(P.startend, odir=P.odir, dt = P.tres, tsdo = P.tsdo,
          glonlim=P.glon, glatlim=P.glat, dlon=P.dlon, dlat=P.dlat,
          wl = P.wl, alt_km= P.altkm, aiafolder = P.sdodir, j=P.proc,
-         instrument=P.instrument, sn=P.sn)
+         instrument=P.instrument, sn=P.sn, parallactic_angle=P.eta)
