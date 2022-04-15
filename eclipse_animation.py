@@ -44,7 +44,8 @@ cmap = 'gist_stern'
 
 def main(startend =None, wl = 193, alt_km=None, glon=None,glat=None,
          tsdo = None, dt = 10,odir = None, sdodir = None, plot=None,
-         srad_fact=1, clim = [0, 1000], cmap = 'gist_stern', animation = False):
+         srad_fact=1, clim = [0, 1000], cmap = 'gist_stern', 
+         instrument = None, animation = False):
     
     global sep, RE
     assert odir is not None
@@ -61,6 +62,9 @@ def main(startend =None, wl = 193, alt_km=None, glon=None,glat=None,
         tsdo = parser.parse(tsdo)
     assert isinstance(tsdo, datetime)
     
+    instrument = instrument.upper()
+    assert instrument in ('AIA', 'SUVI', 'EIT')
+    
     #SDO Image
     if wl != 'geo':
         if platform.system() == 'Windows':
@@ -69,8 +73,8 @@ def main(startend =None, wl = 193, alt_km=None, glon=None,glat=None,
             sdodir = input("Type path to the sdoaia directory:\n")
         assert os.path.exists(sdodir)
         try: 
-            D = eio.sunaia(folder=sdodir, wl=int(wl), time=tsdo)
-            image = D['AIA'+wl].values
+            D = eio.load(folder=sdodir, wl=int(wl), time=tsdo, instrument=instrument)
+            image = D[f'{instrument}{wl}'].values
 #            moon = plt.imshow(image, origin='lower',aspect='equal',
 #                           vmin=clim[0],vmax=clim[1],
 #                           extent=[-2047,2048,-2047,2048],
@@ -112,11 +116,11 @@ def main(startend =None, wl = 193, alt_km=None, glon=None,glat=None,
                                            pixscale=D.pixscale, y0=D.y0)
             else:
                 hmask = np.ones_like(image)
-            eta = utils.parallactic_angle(sun.az, sun.dec, glat)
+            eta = utils.parallactic_angle(sun.az, sun.dec, sun.alt, glat)
                 
             
             # Rotation of the moon if ~100x faster than rotation of the Sun for the parallactinc angle
-            imrot=  ndimage.rotate(image, np.rad2deg(eta), reshape=False) # --- takes about 3seconds to compute
+            imrot =  ndimage.rotate(image, -np.rad2deg(eta), reshape=False) # --- takes about 3seconds to compute
             
             mmask = utils.moon_mask(imrot.shape[0], mx0*D.pixscale + D.x0, 
                                     my0*D.pixscale + D.y0, 
@@ -171,6 +175,7 @@ if __name__ == '__main__':
     p.add_argument('-o', '--odir', help = 'Output directory.', default=None, type = str)
     p.add_argument('--sdodir', help = 'Directory with SDOAIA images.', default=None, type = str)
     p.add_argument('--dt', help = 'time step - minutes', default = 5, type = float)
+    p.add_argument('--instrument', help = 'aia,suvi,eit, Default=AIA', default = 'AIA', type = str)
     p.add_argument('--wl', help = 'SDO wavelength in Angstrom. Default = 193. If uniform type "geo".', type = str, default='193')
     p.add_argument('--srad', help = 'Solar raii inflation factor. Defult=1.0.', type = float, default=1.0)
     p.add_argument('--clim', help = 'Colorbar limits / units caunts. Default 0 -- 1000', type = int, nargs=2, default = [0, 1000])
@@ -181,4 +186,5 @@ if __name__ == '__main__':
 #    
     main(startend=P.startend, glon=P.glon, glat=P.glat, alt_km=P.altkm, 
          tsdo = P.tsdo, dt = P.dt, wl = P.wl, odir = P.odir, sdodir = P.sdodir,
-         clim = P.clim, cmap = P.cmap, animation=P.animation, plot=P.plot, srad_fact=P.srad)
+         clim = P.clim, cmap = P.cmap, animation=P.animation, plot=P.plot, 
+         instrument=P.instrument, srad_fact=P.srad)

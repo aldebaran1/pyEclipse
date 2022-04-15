@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
-         wll=None, dt=10, aiafolder=None, tsdo=None, srad=1.0,save=1, plot=0
+         wll=None, dt=10, aiafolder=None, tsdo=None, srad=1.0,save=1, plot=0,
+         instrument=None,
          ):
     """
     dt = delta_t between t0 and t1 [minutes]
@@ -31,6 +32,9 @@ def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
         else:
             print ("Platform {} is currently not supported.".format(platform.system()))
             exit()
+    
+    instrument = instrument.upper()
+    assert instrument in ('AIA', 'EIT', 'SUVI')
     
     if aiafolder is None:
         import yaml
@@ -68,12 +72,13 @@ def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
             times, of = utils.eof_time(tlim[0], tlim[1], glon, glat, ghgt, dm=0, ds=dt, srad_fact=srad)
         else:
             if isinstance(wl, str):
-                try:
-                    wl = int(wl)
-                    SDO = eio.sunaia(folder=aiafolder, wl=wl, time=parser.parse(tsdo))
-                    times, of = utils.eof_time_sdo(SDO, tlim[0], tlim[1], parser.parse(tsdo), glon, glat, ghgt, wl=wl, dm=0,ds=dt)
-                except:
-                    continue
+#                try:
+                wl = int(wl)
+                print (wl)
+                SDO = eio.load(folder=aiafolder, wl=wl, time=parser.parse(tsdo), instrument=instrument)
+                times, of = utils.eof_time_sdo(SDO=SDO, t0=tlim[0], t1=tlim[1], glon=glon, glat=glat, ghgt=ghgt, wl=wl, dm=0, ds=dt)
+#                except:
+#                    continue
     
         if plot:
             if wl == 'geo':
@@ -112,6 +117,7 @@ if __name__ == '__main__':
     p.add_argument('--tres', help='Time resolution in seconds. Default=60sec', default=60, type=int)
     p.add_argument('--tsdo', help='Time for the SDO image', default=None)
     p.add_argument('--sdodir', help='Folder to SDO images', default=None)
+    p.add_argument('--instrument', help='Instrument, AIA,EIT, or SUVI. Default=AIA', default='AIA')
     p.add_argument('-w', '--wl', help='Choose the wavelengths. Comma separated, "geo" for geometric eclipse. Geo is default', type=str, default='geo', nargs='+')
     p.add_argument('--plot', help='Plot the lines?', action='store_true')
     p.add_argument('--save', help='Do not save the result', action='store_false')
@@ -120,5 +126,5 @@ if __name__ == '__main__':
     
     main(startend=P.startend, glon=P.glon, glat=P.glat, alt_km=P.altkm, odir=P.odir,
          wll=P.wl, dt=P.tres, aiafolder=P.sdodir, tsdo=P.tsdo, srad=P.srad,
-         save=P.save, plot=P.plot,
+         save=P.save, plot=P.plot,instrument=P.instrument
          )

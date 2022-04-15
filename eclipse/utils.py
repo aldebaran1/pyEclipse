@@ -102,15 +102,46 @@ def get_angles(time, glon, glat, ghgt=0):
     
     return sun_moon_separation_radian.reshape(glon.shape), sun_moon_azimuth_radian.reshape(glon.shape), moon_radius_radian.reshape(glon.shape)
 
+#def get_parallactic_angle(time, glon, glat, ghgt):
+#    
+#    def _eta(glon, glat):
+#        sun, moon = objects(time,glon,glat,ghgt)
+#        return parallactic_angle(sun.az, sun.dec, glat)
+#    
+#    def _eta_times(t):
+#        sun, moon = objects(t, glon, glat, ghgt)
+#        return parallactic_angle(sun.az, sun.dec, glat)
+#    
+#    if isinstance(glon, np.ndarray) and isinstance(time, datetime):
+#        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
+#            eta_worker = np.asarray([ex.submit(_eta, glon.ravel()[i], glat.ravel()[i]) for i in range(glon.size)])
+#        
+#        eta = np.nan*np.ones(glon.ravel().size)
+#        for i in range(eta_worker.size):
+#            eta[i] = eta_worker[i].result()
+#        
+#        return eta.reshape(glon.shape)
+#    
+#    elif isinstance(time, np.ndarray):
+#        eta = np.nan*np.ones(time.size)
+#        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
+#            eta_worker = np.asarray([ex.submit(_eta_times, time[i]) for i in range(time.size)])
+#        for i in range(eta_worker.size):
+#            eta[i] = eta_worker[i].result()
+#        return eta
+#    else:
+#        eta = _eta(glon, glat)
+#        return eta
+
 def get_parallactic_angle(time, glon, glat, ghgt):
     
     def _eta(glon, glat):
         sun, moon = objects(time,glon,glat,ghgt)
-        return parallactic_angle(sun.az, sun.dec, glat)
+        return parallactic_angle(sun.az, sun.dec, sun.alt, glat)
     
     def _eta_times(t):
         sun, moon = objects(t, glon, glat, ghgt)
-        return parallactic_angle(sun.az, sun.dec, glat)
+        return parallactic_angle(sun.az, sun.dec, sun.alt, glat)
     
     if isinstance(glon, np.ndarray) and isinstance(time, datetime):
         with concurrent.futures.ThreadPoolExecutor(max_workers=50) as ex:
@@ -130,9 +161,9 @@ def get_parallactic_angle(time, glon, glat, ghgt):
             eta[i] = eta_worker[i].result()
         return eta
     else:
-        print ('a)')
         eta = _eta(glon, glat)
         return eta
+
 def get_eof_mask_from_angles(image, sep, azm, eta, mrad, x0, y0, imres, pixscale):
     mx0, my0 = rotate(sep, azm-eta, 0.0, 0.0)
     mask = moon_mask(imres, mx0*pixscale + x0, my0*pixscale + y0, np.round(mrad, 8)*pixscale)
@@ -164,9 +195,19 @@ def horizon_mask(horizon, pixscale, selv, y0, imsdo):
         hmask = np.ones(imsdo.shape)
     return hmask
 
-def parallactic_angle(sazm, sdec, glat):
-    sineta = np.sin(sazm) * np.cos(np.radians(glat)) / np.cos(sdec)
-    return -np.arcsin(sineta)
+#def parallactic_angle(sazm, sdec, glat):
+#    sineta = np.sin(sazm) * np.cos(np.radians(glat)) / np.cos(sdec)
+#    return -np.arcsin(sineta)
+
+def parallactic_angle(sazm, sdec, salt, glat):
+    zd = np.pi/2 - salt
+    numerator = np.sin(np.radians(glat)) - (np.sin(sdec)*np.cos(zd))
+    denominator = np.cos(sdec) * np.sin(zd)
+    coseta = numerator / denominator
+    if sazm < np.pi:
+        return +np.arccos(coseta)
+    else:
+        return np.arccos(coseta)
 
 def rotate(sep, azm, x0, y0):
 #    (elv,azm,olon,olat,xlon,xlat)
@@ -212,7 +253,7 @@ def azimuth(sazm, selv, mazm, melv):
     
     if (abs(sinc) > 1e-7):# Small angle?
         cosaz = (coslt0 * sinlt1 - sinlt0 * coslt1 * cosl0l1) / sinc  # Azimuth
-        sinaz = (sinl0l1 * coslt1)/sinc
+        sinaz = (sinl0l1 * coslt1) / sinc
     else:   # It is antipodal
         cosaz = 1
         sinaz = 0
@@ -287,7 +328,7 @@ def mask_sdo_ephem(T, glon, glat, ghgt, x0, y0, imsdo, pixscale, use_parallactic
     else:
         hmask = np.ones_like(imsdo)
     if use_parallactic_angle:
-        eta = parallactic_angle(sun.az, sun.dec, glat)
+        eta = parallactic_angle(sun.az, sun.dec, sun.alt, glat)
     else:
         eta = 0
 #    if (sep*pixscale) < (imsdo.shape[0]*1.4142+np.round(moon.radius, 8)*pixscale):
@@ -296,7 +337,7 @@ def mask_sdo_ephem(T, glon, glat, ghgt, x0, y0, imsdo, pixscale, use_parallactic
         azm = azimuth(sun.az, sun.alt, moon.az, moon.alt)
         # Rotation of the moon if ~100x faster than rotation of the Sun for the parallactinc angle
         # ndimage.rotate(imsdo, np.rad2deg(eta), reshape=False) --- takes about 3seconds to compute
-        mx0, my0 = rotate(sep, azm-eta, 0.0, 0.0)
+        mx0, my0 = rotate(sep, azm+eta, 0.0, 0.0)
         mmask = moon_mask(imsdo.shape[0], mx0*pixscale + x0, my0*pixscale + y0, np.round(moon.radius, 8)*pixscale)
         mask = np.multiply(hmask, mmask)
         of =  np.nansum(np.multiply(imsdo,mask)) / np.nansum(imsdo)
@@ -362,8 +403,6 @@ def eof_time_sdo(SDO, t0, t1, glon, glat, ghgt, wl=193, dm=10,ds=0):
     instrument = list(SDO.variables)[0][:3]
     imsdo = SDO[list(SDO.variables)[0]].values
     if instrument == 'EIT':
-        imsdo = np.subtract(ndimage.rotate(imsdo, 180), 900)
-    if glat < 0:
         imsdo = np.subtract(ndimage.rotate(imsdo, 180), 900)
     for i,T in enumerate(times):
         if (i+1)%10 == 0:

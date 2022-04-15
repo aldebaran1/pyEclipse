@@ -19,7 +19,8 @@ projection = 'ortographic'
 mlat_levels = [-65, -75, 60, 75]
 
 def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
-         laplace=0,auroral_oval=0,clabel=0, srad=1.0,
+         laplace=0,auroral_oval=0,clabel=0, srad=1.0, 
+         eta: bool = False,
          lat0 = None, lon0 = None, save=1):
     cmax = 10 if clabel else 25
     clw = 1 if clabel else 0.5
@@ -32,9 +33,9 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
     if odir is None:
         if wl != 'geo':
             if laplace:
-                odir = os.path.join(idir, "{}_{}_lap\\".format(wl, alt_km))
+                odir = os.path.join(idir, "{}_{}_{}_lap\\".format(wl, alt_km, int(eta)))
             else:
-                odir = os.path.join(idir, "{}_{}\\".format(wl, alt_km))
+                odir = os.path.join(idir, "{}_{}_{}\\".format(wl, alt_km, int(eta)))
         else:
             if laplace:
                 odir = os.path.join(idir, "{}_{}_{}_lap\\".format(wl, srad, alt_km))
@@ -47,7 +48,7 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
     if wl != 'geo':
         EOFF = np.array(sorted(glob.glob(idir + "*_{}km_{}*.nc".format(alt_km, wl))))
     else:
-        EOFF = np.array(sorted(glob.glob(idir + "*_{}km_{}*_{}.nc".format(alt_km, wl, srad))))
+        EOFF = np.array(sorted(glob.glob(idir + "*_{}km_{}*_{}_{}.nc".format(alt_km, wl, srad, int(eta)))))
     f_times = []
     for f in EOFF:
         try:
@@ -152,7 +153,7 @@ if __name__ == '__main__':
     p.add_argument('--altkm', help='altitude in km', default = 150, type=int)
     p.add_argument('--tlim', help='time limit, 2 args "start" "stop"', nargs=2, default=None, type=str)
     p.add_argument('--srad', help='altitude in km', default = 1.0, type=float)
-    
+    p.add_argument('--eta', help='Parallactic angle = ?', action='store_true')
     p.add_argument('--lon0', help='Map center: longitude default = 0', type=int, default=0)
     p.add_argument('--lat0', help='Map center: Latitude default = 0', type=int, default=0)
     
@@ -163,5 +164,5 @@ if __name__ == '__main__':
     P = p.parse_args()
     main(idir=P.folder, wl=P.wl, alt_km=P.altkm, odir=P.odir, tlim=P.tlim,
          laplace=P.laplace, auroral_oval=P.oval, clabel=P.clabel, srad=P.srad,
-         lat0=P.lat0, lon0=P.lon0, save=1)
+         lat0=P.lat0, lon0=P.lon0, eta=P.eta, save=1)
     

@@ -14,21 +14,23 @@ import numpy as np
 import concurrent.futures
 from argparse import ArgumentParser
 
-def _eof(sep, azm, eta, mrad, wl):
+def _eof(sep, azm, eta, mrad, insturment, wl):
 #    global SDO, imres, rad2pix, wl
-    return utils.get_eof_mask_from_angles(SDO['AIA{}'.format(wl)].values, sep,azm,eta,mrad, x0, y0, imres=imres,pixscale=rad2pix)
+    return utils.get_eof_mask_from_angles(SUN['{instrument.upper()}{wl}'].values, sep,azm,eta,mrad, x0, y0, imres=imres,pixscale=rad2pix)
 
 def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km=0, 
          wl=193, dlon=None, dlat=None, dt=10, j=1,
          aiafolder=None, instrument=None, parallactic_angle=False, sn=None
          ):
-    global SDO, x0, y0, imres, rad2pix
     """
     dt = delta_t between t0 and t1 [minutes]
     glonlim, glatlim is a listwith [glon_min, glon_max]
     dlon, dlat is a spacing in lon and lat
     alt_km is alitutde in kilometer
     """
+    
+    global SUN, x0, y0, imres, rad2pix
+    
     if not os.path.exists(odir):
         if platform.system() == 'Windows':
             subprocess.call('mkdir "{}"'.format(odir), shell=True)
@@ -47,7 +49,6 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
         print (aiafolder)
         if aiafolder is None or (not os.path.exists(aiafolder)):
                 aiafolder = input("Type valid path to the sdoaia folder:\n")
-    print (aiafolder)
     assert os.path.exists(aiafolder), "AIAFOLDER doesn't exists"
 
     if tsdo is None:
@@ -56,15 +57,15 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
     glon = np.arange(glonlim[0], glonlim[1], dlon)
     glat = np.arange(glatlim[0], glatlim[1], dlat)
     ghgt = alt_km * 1000
-    SDO = eio.load(folder=aiafolder, wl=wl, time=parser.parse(tsdo), 
+    SUN = eio.load(folder=aiafolder, wl=wl, time=parser.parse(tsdo), 
                    instrument=instrument, sn=sn)
-    x0, y0 = SDO.x0, SDO.y0
+    x0, y0 = SUN.x0, SUN.y0
     
     glon_grid, glat_grid = np.meshgrid(glon,glat)
-    rad2pix = SDO.pixscale
-    imres = int(SDO['AIA{}'.format(wl)].shape[0])
+    rad2pix = SUN.pixscale
+    imres = int(SUN[f'{instrument.upper()}{wl}'].shape[0])
     critical_distance = imres/2 + imres*1.414
-    
+    print (SUN)
     for it,T in enumerate(times):
         save_fn = odir + "{}_{}km_{}_{}.nc".format(T.strftime("%Y%m%d%H%M%S"), int(alt_km), wl, int(parallactic_angle))
         if not os.path.exists(save_fn):
@@ -85,7 +86,7 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
             ix = np.where(np.isnan(of))
             print ("Loading for one iteration {}".format(datetime.now()-tt))
             with concurrent.futures.ThreadPoolExecutor(max_workers=j) as ex:
-                of_worker = np.asarray([ex.submit(_eof, sep[ix[0][i],ix[1][i]], azm[ix[0][i],ix[1][i]], eta[ix[0][i],ix[1][i]], mrad[ix[0][i],ix[1][i]],wl) for i in range(ix[0].size)])
+                of_worker = np.asarray([ex.submit(_eof, sep[ix[0][i],ix[1][i]], azm[ix[0][i],ix[1][i]], eta[ix[0][i],ix[1][i]], mrad[ix[0][i],ix[1][i]], instrument, wl) for i in range(ix[0].size)])
             print ("Total {}".format(datetime.now()-tt))
             for i in range(of_worker.size):
                 of[ix[0][i],ix[1][i]] = of_worker[i].result()
@@ -100,7 +101,7 @@ def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km
             X['time'] = T
             X['alt_km'] = alt_km
             X['wl'] = wl
-            X['time_image'] = SDO.time
+            X['time_image'] = SUN.time
             X['instrument'] = instrument
             X.to_netcdf(save_fn)
             X.close()
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     p.add_argument('--sn', help='GOES satellite number', default = 16, type=int)
     p.add_argument('-i', '--instrument', help='AIA, SUVI or EIT', default = 'aia', type=str)
     p.add_argument('-j', '--proc', help='Numer of parallel processes', default=10, type=int)
-    p.add_argument('--eta', help='Utilize parallactic angle?', action='store_true')
+    p.add_argument('--eta', help='Turn off parallactic angle?', action='store_false')
     
     P = p.parse_args()
     
