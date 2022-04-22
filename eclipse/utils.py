@@ -184,15 +184,19 @@ def moon_mask(N, mx1, my1, r):
     return ~mask
 
 def horizon_mask(horizon, pixscale, selv, y0, imsdo):
-    if np.degrees(horizon) > -3:
-        hmask = np.ones(imsdo.shape[0])
-        for i in range(hmask.size):
-            tmp = selv + ((i - int(y0)) / pixscale)
-            if tmp < horizon:
-                hmask[i] = 0
-        hmask = np.array([hmask,]*imsdo.shape[0]).T
-    else:
-        hmask = np.ones(imsdo.shape)
+#    if np.degrees(horizon) > -3:
+    hmask = np.ones(imsdo.shape[0])
+    for i in range(hmask.size):
+        tmp = (i-y0) / pixscale
+        hmask[i] = 0 if tmp < horizon else 1
+#    for i in range(hmask.size):
+#        tmp = selv + ((i - int(y0)) / pixscale)
+#        if tmp < horizon:
+#            hmask[i] = 0
+    hmask = np.array([hmask,]*imsdo.shape[0]).T
+#    else:
+#        hmask = np.ones(imsdo.shape)
+#    print (hmask)
     return hmask
 
 #def parallactic_angle(sazm, sdec, glat):
@@ -322,7 +326,6 @@ def mask_sdo_ephem(T, glon, glat, ghgt, x0, y0, imsdo, pixscale, use_parallactic
     sun, moon = objects(T,glon,glat,ghgt)
     horizon = (-np.arccos(RE / (RE + ghgt/1e3)) - sun.alt - sun.radius)
     sep = separation(sun.az, sun.alt, moon.az, moon.alt) 
-    
     if horizon*pixscale >= (imsdo.shape[0]/2-imsdo.shape[0]):
         hmask = horizon_mask(horizon=horizon, selv=sun.alt, imsdo=imsdo, pixscale=pixscale, y0=y0)
     else:

@@ -12,25 +12,26 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 t0 = datetime(2021,6,10,9,0,0)
 t1 = datetime(2021,6,10,10,0,0)
-T = datetime(2021,12,4,8,15,0)
+#T = datetime(2021,12,4,8,15,0)
 #tsdo = datetime(2021,12,4,7,30,0)
 tsdo = None
 T = datetime(2017,8,21,18,0)
+T = datetime(2021,6,10,10,0)
 dm = 50
 ds = 0
 srad_fact = 1.15
 
-glon_center = [160, -20]
-glon_center = [-100]
+glon_center = [-60, 120]
+#glon_center = [-100]
 
-wl = 94
+wl = 193
 
 animation = 0
 save = 0
 folder = 'G:\\My Drive\\eclipse\\mask\\{}\\latalt\\lon{}\\'.format(T.strftime("%Y%m%d"), glon_center)
 
-glat = [np.arange(-40, -90, -1), np.arange(-90, -50.1, 1)]
-glat = [np.arange(0, 90.1, 1)]
+glat = [np.arange(20, 90, 1), np.arange(90, 79.9, -1)]
+#glat = [np.arange(0, 90.1, 1)]
 if len(glat) > 1:
     for i in range(len(glat)):
         if i == 0:
@@ -54,7 +55,7 @@ if wl != 'geo':
     aiafolder = 'G:\\My Drive\\eclipse\\sdoaia\\'
     if tsdo is None:
         tsdo = times[0]
-    SDO = eio.sunaia(folder=aiafolder, wl=wl, time=tsdo)
+    SDO = eio.load(folder=aiafolder, wl=wl, time=tsdo)
 
 latsize = 0
 for i in range(len(glat)):
@@ -78,7 +79,7 @@ plt.figure(figsize=[8,5])
 plt.title(f'Time:{T}, glon:{glon_center}')
 im = plt.pcolormesh(np.arange(latsize), ghgt/1e3, np.squeeze(OF).T, cmap='nipy_spectral', 
                     shading='gouraud')
-plt.contour(np.arange(latsize), ghgt/1e3, np.squeeze(OF).T, levels=np.linspace(0.1,1,40), 
+plt.contour(np.arange(latsize), ghgt/1e3, np.squeeze(OF).T, levels=np.linspace(0.1,1,50), 
             colors='w', linewidths=0.5)
 plt.ylabel('Altitutde [km]')
 plt.xlabel('Geographic latitude')

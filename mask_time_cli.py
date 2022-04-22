@@ -72,13 +72,12 @@ def main(startend=None, glon=None, glat=None, alt_km=100, odir=None,
             times, of = utils.eof_time(tlim[0], tlim[1], glon, glat, ghgt, dm=0, ds=dt, srad_fact=srad)
         else:
             if isinstance(wl, str):
-#                try:
-                wl = int(wl)
-                print (wl)
-                SDO = eio.load(folder=aiafolder, wl=wl, time=parser.parse(tsdo), instrument=instrument)
-                times, of = utils.eof_time_sdo(SDO=SDO, t0=tlim[0], t1=tlim[1], glon=glon, glat=glat, ghgt=ghgt, wl=wl, dm=0, ds=dt)
-#                except:
-#                    continue
+                try:
+                    wl = int(wl)
+                    SDO = eio.load(folder=aiafolder, wl=wl, time=parser.parse(tsdo), instrument=instrument)
+                    times, of = utils.eof_time_sdo(SDO=SDO, t0=tlim[0], t1=tlim[1], glon=glon, glat=glat, ghgt=ghgt, wl=wl, dm=0, ds=dt)
+                except:
+                    continue
     
         if plot:
             if wl == 'geo':
