@@ -1,5 +1,7 @@
 # pyEclipse
 
+[![DOI](https://zenodo.org/badge/362197547.svg)](https://zenodo.org/badge/latestdoi/362197547)
+
 This model was suported by National Science Fundation grant AGS-13019141 and by NASA grant 13018916.
 
 
