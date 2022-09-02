@@ -46,9 +46,9 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
     assert os.path.exists(odir)
     
     if wl != 'geo':
-        EOFF = np.array(sorted(glob.glob(idir + "*_{}km_{}*.nc".format(alt_km, wl))))
+        EOFF = np.array(sorted(glob.glob(idir + "*_{}km_{}_{}*.nc".format(alt_km, wl, int(eta)))))
     else:
-        EOFF = np.array(sorted(glob.glob(idir + "*_{}km_{}*_{}_{}.nc".format(alt_km, wl, srad, int(eta)))))
+        EOFF = np.array(sorted(glob.glob(idir + "*_{}km_{}_{}.nc".format(alt_km, wl, srad))))
     f_times = []
     for f in EOFF:
         try:
