@@ -73,17 +73,29 @@ def get_filename(folder, wl, time, insturment, sn=None):
             fdate_dt = np.array([parser.parse(d) for d in filedates])
             
         elif insturment in ('suvi', 'SUVI'):
-            fnlist = np.array(glob(folder + '*.fits'))
-            suvi_wl = np.array([int(os.path.split(f)[1][13:16]) for f in fnlist])
-            suvi_sn = np.array([int(os.path.split(f)[1][18:20]) for f in fnlist])
-            suvi_dates = np.array([parser.parse(os.path.split(f)[1][22:37]) for f in fnlist])
+#            fnlist_l2 = np.array(glob(folder + '*l2*.fits'))
+#            suvi_wl_l2 = np.array([int(os.path.split(f)[1][13:16]) for f in fnlist_l2])
+#            suvi_sn_l2 = np.array([int(os.path.split(f)[1][18:20]) for f in fnlist_l2])
+#            suvi_dates_l2 = np.array([parser.parse(os.path.split(f)[1][22:37]) for f in fnlist_l2])
+#            idr_l2 = np.logical_and(suvi_sn_l2==sn, suvi_wl_l2==wl)
+#            fdate_dt_l2 = suvi_dates_l2[idr_l2]
+#            fnlist_l2 = fnlist_l2[idr_l2]
+            
+            fnlist = np.array(glob(folder + '*l1b*.fits'))
+            suvi_wl = np.array([int(os.path.split(f)[1][14:17]) for f in fnlist])
+            suvi_sn = np.array([int(os.path.split(f)[1][19:21]) for f in fnlist])
+            fdate_dt = np.array([datetime.strptime(os.path.split(f)[1][23:37], '%Y%j%H%M%S%f') for f in fnlist])
+            
             
             idr = np.logical_and(suvi_sn==sn, suvi_wl==wl)
-            fdate_dt = suvi_dates[idr]
+            fdate_dt = fdate_dt[idr]
+#        print (fdate_dt)
+        
             fnlist = fnlist[idr]
         idX = abs(fdate_dt - time).argmin()
+            
         if (abs(fdate_dt - time)[idX].total_seconds()) > 12*60*60:
-            raise ValueError ("Closest SDO image is more than 12 hours away.")
+                raise ('No images available withing the 12 hours from the givent time')
         fn = fnlist[idX]
         print ("File choosen: " + os.path.split(fn)[1])
     return fn
@@ -102,6 +114,7 @@ def load(folder: str = None,
         fn = folder
     
     ix = 1 if instrument in ('aia', 'AIA', 'suvi', 'SUVI') else 0
+    ix = 1 if instrument in ('aia', 'AIA') else 0
     
     try:
         FITS = fits.open(fn)
@@ -109,7 +122,14 @@ def load(folder: str = None,
         raise (e)
     FITS[ix].verify('fix')
     bitpix = FITS[ix].header['BITPIX']
-    imtime =  parser.parse(FITS[ix].header['DATE-OBS']) if ix == 1  else parser.parse(FITS[ix].header['DATE_OBS'])
+    if ix == 1 :
+        imtime =  parser.parse(FITS[ix].header['DATE-OBS']) 
+    else:
+        if instrument in ('suvi', 'SUVI'):
+            imtime = parser.parse(FITS[ix].header['DATE'])
+        else:
+            imtime = parser.parse(FITS[ix].header['DATE_OBS'])
+    
     imx0 = FITS[ix].header['CRPIX1']
     imy0 = FITS[ix].header['CRPIX2']
     pixel2arcsec = FITS[ix].header['CDELT1']
