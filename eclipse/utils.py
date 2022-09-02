@@ -208,6 +208,11 @@ def parallactic_angle(sazm, sdec, salt, glat):
     numerator = np.sin(np.radians(glat)) - (np.sin(sdec)*np.cos(zd))
     denominator = np.cos(sdec) * np.sin(zd)
     coseta = numerator / denominator
+    if coseta > 1.00 and coseta <= 1.001:
+        coseta = 1.0
+    elif coseta > 1.001:
+        print ("Coseta > 1.0???")
+        
     if sazm < np.pi:
         return +np.arccos(coseta)
     else:
@@ -243,6 +248,7 @@ def objects(T, glon, glat, ghgt):
     return sun, moon
 
 def azimuth(sazm, selv, mazm, melv):
+    
     coslt1 = np.cos(melv)
     sinlt1 = np.sin(melv)
     
@@ -324,20 +330,27 @@ def mask_geo_ephem(T, glon, glat, ghgt=0, srad_fact=1, plot=0):
 
 def mask_sdo_ephem(T, glon, glat, ghgt, x0, y0, imsdo, pixscale, use_parallactic_angle=1):
     sun, moon = objects(T,glon,glat,ghgt)
-    horizon = (-np.arccos(RE / (RE + ghgt/1e3)) - sun.alt - sun.radius)
-    sep = separation(sun.az, sun.alt, moon.az, moon.alt) 
+    sazm, selv = sun.az, sun.alt
+    mazm, melv = moon.az, moon.alt
+    if sazm > np.pi:
+        sazm -= 2*np.pi
+    if mazm > np.pi:
+        mazm -= 2*np.pi
+        
+    horizon = (-np.arccos(RE / (RE + ghgt/1e3)) - selv - sun.radius)
+    sep = separation(sazm, selv, mazm, melv) 
     if horizon*pixscale >= (imsdo.shape[0]/2-imsdo.shape[0]):
-        hmask = horizon_mask(horizon=horizon, selv=sun.alt, imsdo=imsdo, pixscale=pixscale, y0=y0)
+        hmask = horizon_mask(horizon=horizon, selv=selv, imsdo=imsdo, pixscale=pixscale, y0=y0)
     else:
         hmask = np.ones_like(imsdo)
     if use_parallactic_angle:
-        eta = parallactic_angle(sun.az, sun.dec, sun.alt, glat)
+        eta = parallactic_angle(sazm, sun.dec, selv, glat)
     else:
         eta = 0
 #    if (sep*pixscale) < (imsdo.shape[0]*1.4142+np.round(moon.radius, 8)*pixscale):
     if (sep*pixscale) < (imsdo.shape[0]+np.round(moon.radius, 8)*pixscale):
         
-        azm = azimuth(sun.az, sun.alt, moon.az, moon.alt)
+        azm = azimuth(sazm, selv, mazm, melv)
         # Rotation of the moon if ~100x faster than rotation of the Sun for the parallactinc angle
         # ndimage.rotate(imsdo, np.rad2deg(eta), reshape=False) --- takes about 3seconds to compute
         mx0, my0 = rotate(sep, azm+eta, 0.0, 0.0)
