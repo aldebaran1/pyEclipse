@@ -15,6 +15,7 @@ SDO AIA EUV telescolpe images coronal (and chromosphere) emissions at:
 - 211A
 - 304A
 - 335A    
+- 1600 A (continuum line from the photosphere/transition region)
 For more information about these coronal lines refer to Lemen et al (2012) [a]. The original works used NOVAS Fortran routines developed by Douglas Drob (NRL). The results wee published in Geophysical Research Letters [b,c,d]. This software framework is purely pythonic, all NOVAS Fortran routines are re-written in Python. The 2-D maps take a long time to compute, so the tedious *for*-loops are parallelized with `concurrent.futures.ThreadPoolExecutor()`. Running more scirpts in parallel will jam your CPUs [Just saying].
 
 To download desired SDO AIA images in .fits format, 
