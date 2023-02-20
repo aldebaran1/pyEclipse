@@ -17,17 +17,20 @@ save = 1
 alt_km = 150
 scale = 1.1
 wl = 193
+wl = 94
 eta = 1
 
-date = '20210610'
+date = '20170821'
 root = 'G:\\My Drive\\eclipse\\mask\\{}\\'.format(date)
 root = 'C:\\Users\\smrak\\OneDrive - UCB-O365\\Projects\\eclipse_LASP\\{}\\'.format(date)
+root = 'G:\\My Drive\\eclipse\\Eclipse_masks_Pham\\{}\\'.format(date)
 odir = root + 'diff\\'
 
 Fgeo = np.array(sorted(glob.glob(root + "geo\\*_{}km_{}_{}.nc".format(alt_km, 'geo', scale))))
 geo_times = np.array([parser.parse(os.path.split(f)[1][:14]) for f in Fgeo])
 
 Faia = np.array(sorted(glob.glob(root + "aia\\*_{}km_{}*_{}.nc".format(alt_km, wl, eta))))
+Faia = np.array(sorted(glob.glob(root + "aia\\*_{}km_{}*.nc".format(alt_km, wl, eta))))
 aia_times = np.array([parser.parse(os.path.split(f)[1][:14]) for f in Faia])
 
 for i,f in enumerate(Faia):
@@ -39,7 +42,7 @@ for i,f in enumerate(Faia):
         continue
     EOFgeo = xarray.open_dataset(Fgeo[idt]).of.values
     
-    fig, ax = gm.plotCartoMap(projection='ortographic', lon0=-50, lat0=40,
+    fig, ax = gm.plotCartoMap(projection='ortographic', lon0=-80, lat0=0,
                               figsize=[8,5],
                               lonlim=[-180,180], latlim=[-90,90],
                               title = aia_times[i],

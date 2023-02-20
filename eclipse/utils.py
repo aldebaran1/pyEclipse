@@ -471,19 +471,19 @@ def mask_latalt_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
     return OF
 
 # Spacecraft
-def eof_satellite(times, glon, glat, ghgt, SDO=None, srad=1.0, wl='geo', 
+def eof_satellite(times, glon, glat, alt_km, SDO=None, srad=1.0, wl='geo', 
                   use_parallactic_angle=1, verbose=False):
     OF = np.zeros(times.size)
     for i,T in enumerate(times):
         if verbose:
             if (i+1)%10 == 0:
                 print ("Processing {}/{}".format(i+1, times.size))
-        sza = get_sza(T, glon[i], glat[i], alt_km=ghgt[i])
+        sza = get_sza(T, glon[i], glat[i], alt_km=alt_km[i])
         if sza < 95:
             if SDO is not None:
-                OF[i] = mask_sdo_ephem(T, glon[i], glat[i], ghgt[i]*1e3, SDO.x0, SDO.y0, 
+                OF[i] = mask_sdo_ephem(T, glon[i], glat[i], alt_km[i]*1e3, SDO.x0, SDO.y0, 
                   SDO['AIA{}'.format(wl)].values, SDO.pixscale,
                   use_parallactic_angle=use_parallactic_angle)
             else:
-                OF[i] = mask_geo_ephem(T, glon[i], glat[i], ghgt[i]*1e3, srad_fact=srad)
+                OF[i] = mask_geo_ephem(T, glon[i], glat[i], alt_km[i]*1e3, srad_fact=srad)
     return times, OF
