@@ -14,9 +14,9 @@ import numpy as np
 import concurrent.futures
 from argparse import ArgumentParser
 
-def _eof(sep, azm, eta, mrad, insturment, wl):
+def _eof(sep, azm, eta, mrad, instrument, wl):
 #    global SDO, imres, rad2pix, wl
-    return utils.get_eof_mask_from_angles(SUN['{instrument.upper()}{wl}'].values, sep,azm,eta,mrad, x0, y0, imres=imres,pixscale=rad2pix)
+    return utils.get_eof_mask_from_angles(SUN[f'{instrument.upper()}{wl}'].values, sep,azm,eta,mrad, x0, y0, imres=imres,pixscale=rad2pix)
 
 def main(startend, odir, tsdo=None, glonlim=[-180,180], glatlim=[-90,90], alt_km=0, 
          wl=193, dlon=None, dlat=None, dt=10, j=1,
