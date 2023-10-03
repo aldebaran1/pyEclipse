@@ -13,6 +13,6 @@ setup(name='pyEclipse',
       description='Software framework for computation of solar eclipses on the Earth.',
       author='Sebastijan Mrak',
       url='https://github.com/aldebaran1/pyEclipse.git',
-      install_requires=['numpy', 'scipy', 'pyEphem', 'futures3', 'sunpy'],
+      install_requires=['numpy', 'scipy', 'pyEphem', 'futures3', 'sunpy', 'zeep', 'lxml', 'drms', 'wget'],
       packages=['eclipse']
 )
