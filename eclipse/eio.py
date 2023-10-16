@@ -33,15 +33,19 @@ LEAP_dates = ['1 Jan 1972', '1 Jul 1972', '1 Jan 1973',
 oneradian_arcsec = (180 * 3600) / pi
 ddd2D = {'Jan': 1, 'Jul': 7}
 
-def get_filename(folder, wl, time, insturment, sn=None):
+def get_filename(folder, wl, time, instrument, sn=None):
     
     assert (os.path.exists(folder)), f'{folder} doesnt exists'
         
     if time is None:
-        if insturment == 'aia':
+        if instrument == 'aia':
             seekfor = '*{}a*.fits'.format(wl)
-        elif insturment == 'eit':
-            seekfor = 'efz{}_*'.format(time.strftime)
+        elif instrument == 'eit':
+            seekfor = 'efz*'
+        elif instrument.lower() == 'xrt':
+            seekfor = 'synop_XRT*'
+        else:
+            print ("Entered instrument is not on th elist of supported telescopes")
         try:
             fn = glob(folder + seekfor)[0]
             print ("File choosen: " + os.path.split(fn)[1])
@@ -52,7 +56,7 @@ def get_filename(folder, wl, time, insturment, sn=None):
             time = parser.parse(time)
         assert isinstance(time, datetime), 'Time must be in appropraite format (str or datetime)'
         
-        if insturment in ('aia', 'AIA'):
+        if instrument in ('aia', 'AIA'):
             wlfilt = '*{}a*.fits'.format(wl)
             fnlist = np.array(glob(folder + wlfilt))
             names = [os.path.split(ff)[1] for ff in fnlist]
@@ -65,37 +69,30 @@ def get_filename(folder, wl, time, insturment, sn=None):
             else:
                 raise ('Wrong wavelength argument')
             fdate_dt = array([parser.parse(d) for d in filedates])
-        elif insturment in ('eit', 'EIT'):
+        elif instrument in ('eit', 'EIT'):
             wlfilt = 'efz{}*'.format(time.strftime('%Y%m%d'))
             fnlist = np.array(glob(folder + wlfilt))
             names = [os.path.split(ff)[1] for ff in fnlist]
             filedates = [f'{n[3:11]}T{n[12:]}' for n in names]
             fdate_dt = np.array([parser.parse(d) for d in filedates])
             
-        elif insturment in ('suvi', 'SUVI'):
-#            fnlist_l2 = np.array(glob(folder + '*l2*.fits'))
-#            suvi_wl_l2 = np.array([int(os.path.split(f)[1][13:16]) for f in fnlist_l2])
-#            suvi_sn_l2 = np.array([int(os.path.split(f)[1][18:20]) for f in fnlist_l2])
-#            suvi_dates_l2 = np.array([parser.parse(os.path.split(f)[1][22:37]) for f in fnlist_l2])
-#            idr_l2 = np.logical_and(suvi_sn_l2==sn, suvi_wl_l2==wl)
-#            fdate_dt_l2 = suvi_dates_l2[idr_l2]
-#            fnlist_l2 = fnlist_l2[idr_l2]
-            
+        elif instrument in ('suvi', 'SUVI'):
             fnlist = np.array(glob(folder + '*l1b*.fits'))
             suvi_wl = np.array([int(os.path.split(f)[1][14:17]) for f in fnlist])
             suvi_sn = np.array([int(os.path.split(f)[1][19:21]) for f in fnlist])
             fdate_dt = np.array([datetime.strptime(os.path.split(f)[1][23:37], '%Y%j%H%M%S%f') for f in fnlist])
-            
-            
+        
             idr = np.logical_and(suvi_sn==sn, suvi_wl==wl)
             fdate_dt = fdate_dt[idr]
-#        print (fdate_dt)
-        
             fnlist = fnlist[idr]
-        idX = abs(fdate_dt - time).argmin()
             
+        elif instrument.lower() == 'xrt':
+            fnlist = np.array(glob(folder + 'synop_XRT*.fits'))
+            fdate_dt = np.array([datetime.strptime(os.path.split(f)[1][9:-7], '%Y%m%d_%H%M%S') for f in fnlist])
+            
+        idX = abs(fdate_dt - time).argmin()
         if (abs(fdate_dt - time)[idX].total_seconds()) > 12*60*60:
-                raise ('No images available withing the 12 hours from the givent time')
+                raise ('No images available withing the 12 hours from the given time')
         fn = fnlist[idX]
         print ("File choosen: " + os.path.split(fn)[1])
     return fn
@@ -106,14 +103,13 @@ def load(folder: str = None,
            sn: int = None,
            instrument: str = 'aia') -> xarray.Dataset:
     
-    assert (instrument in ('aia' , 'eit', 'suvi', 'AIA', 'EIT', 'SUVI')), "Currently we support SDO AIA, SOHO EIT, and GOES-R SUVI telescopes"
+    assert (instrument in ('aia' , 'eit', 'suvi', 'AIA', 'EIT', 'SUVI', 'xrt', 'XRT')), "Currently we support SDO AIA, SOHO EIT, Hinode XRT, and GOES-R SUVI telescopes"
     
     if not os.path.isfile(folder):
         fn = get_filename(folder, wl, time, instrument, sn)
     else:
         fn = folder
     
-    ix = 1 if instrument in ('aia', 'AIA', 'suvi', 'SUVI') else 0
     ix = 1 if instrument in ('aia', 'AIA') else 0
     
     try:
@@ -121,21 +117,30 @@ def load(folder: str = None,
     except Exception as e:
         raise (e)
     FITS[ix].verify('fix')
-    bitpix = FITS[ix].header['BITPIX']
-    if ix == 1 :
+    # bitpix = FITS[ix].header['BITPIX']
+    if instrument.lower() in ('aia') :
         imtime =  parser.parse(FITS[ix].header['DATE-OBS']) 
+    elif instrument.lower() in ('suvi'):
+        imtime = parser.parse(FITS[ix].header['DATE'])
+    elif instrument.lower() in ('xrt', 'eit'):
+        imtime = parser.parse(FITS[ix].header['DATE_OBS'])
     else:
-        if instrument in ('suvi', 'SUVI'):
-            imtime = parser.parse(FITS[ix].header['DATE'])
-        else:
-            imtime = parser.parse(FITS[ix].header['DATE_OBS'])
+        print ("Instrument not on the list of available data")
+        return 0
+            
     
     imx0 = FITS[ix].header['CRPIX1']
     imy0 = FITS[ix].header['CRPIX2']
     pixel2arcsec = FITS[ix].header['CDELT1']
-    wl = FITS[ix].header['WAVELNTH']
-    
-    assert (FITS[ix].header['BITPIX'] == bitpix), 'Assure the data encoded with uint-16bit'
+    if instrument.lower() in ('aia', 'suvi', 'eit'): 
+        wl = FITS[ix].header['WAVELNTH']
+    elif instrument.lower() in ('xrt'):
+        wl = 'X'
+    else:
+        print ("Instrument not on the list of available data")
+        return 0
+        
+    #assert (FITS[ix].header['BITPIX'] == bitpix), 'Assure the data encoded with uint-16bit'
     
     im = float64(FITS[ix].data.squeeze())
     if instrument in ('eit', 'EIT'):
@@ -143,6 +148,9 @@ def load(folder: str = None,
     # Set data outside the detector values to 0
     im[im < 0] = 0
     im[im > 2**16] = 0
+    if instrument.lower() == 'xrt':
+        im[im < 30] = 0
+        im = ndimage.median_filter(ndimage.median_filter(im, 3), 3)
     # Construct  xarray for easier data manipulation and access
     D = xarray.Dataset({f'{instrument.upper()}{wl}': (('x', 'y'), im)})
     D.attrs['time'] = imtime
@@ -150,6 +158,8 @@ def load(folder: str = None,
     D.attrs['y0'] = imy0
     D.attrs['pxarcsec'] = pixel2arcsec
     D.attrs['pixscale'] = oneradian_arcsec / pixel2arcsec
+    if instrument.lower() == 'xrt':
+        D.attrs['mode'] = FITS[ix].header['EC_FW1_']
     
     return D
 
