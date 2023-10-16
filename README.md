@@ -2,10 +2,10 @@
 
 [![DOI](https://zenodo.org/badge/362197547.svg)](https://zenodo.org/badge/latestdoi/362197547)
 
-This model was suported by National Science Fundation grant AGS-13019141 and by NASA grant 13018916.
+This model was suported by National Science Fundation grant AGS-13019141 and by NASA grant 13018916. Additon of Hinode XRT is supported by AFOSR under grant 23RT1097 to CU Boulder and JHU APL.
 
 
-PyEclipse is a pythonic software framework for computing solar eclipses. The unique feautes of this framework is a computation of eclipse penumbra at wavelengths captured by solar telescopes at various wavelengths. Momenteraly, we interface with Virtual Solar Observatory, using SunPy library, to retrieve Solar Dynamics Observatory (SDO) Atmospheric Imaging Assembley (AIA) images at Extreme UltraViolet (EUV) Wavelengths. SDO AIA images are high-resolution (4096x4096) and high cadence (1 minute per wavelength). We can download SOHO EIT as well using SunPy interface, however, the data quality is very poor. PyEclipse has a custon interface to noaa.ncei to download GOES SUVI L1b and L2 data. Only L2 data is good enough quality for precise eclipse modeling.*[Other telescopes can be added to the package, for instance HINODE, GOES SXI, as loong as they are privided the metadata described below]*   
+PyEclipse is a pythonic software framework for computing solar eclipses. The unique feautes of this framework is a computation of eclipse penumbra at wavelengths captured by solar telescopes at various wavelengths. Momenteraly, we interface with Virtual Solar Observatory, using SunPy library, to retrieve Solar Dynamics Observatory (SDO) Atmospheric Imaging Assembley (AIA) images at Extreme UltraViolet (EUV) Wavelengths. SDO AIA images are high-resolution (4096x4096) and high cadence (1 minute per wavelength). We can download SOHO EIT as well using SunPy interface, however, the data quality is very poor. PyEclipse has a custon interface to noaa.ncei to download GOES SUVI L1b and L2 data. Only L2 data is good enough quality for precise eclipse modeling.*[Other telescopes can be added to the package, for instance \, GOES SXI, as loong as they are privided the metadata described below]*   
 
 SDO AIA EUV telescolpe images coronal (and chromosphere) emissions at: 
 - 94A (Angstrom, 10 A = 1 nm)
@@ -17,6 +17,19 @@ SDO AIA EUV telescolpe images coronal (and chromosphere) emissions at:
 - 335A    
 - 1600 A (continuum line from the photosphere/transition region)
 For more information about these coronal lines refer to Lemen et al (2012) [a]. The original works used NOVAS Fortran routines developed by Douglas Drob (NRL). The results wee published in Geophysical Research Letters [b,c,d]. This software framework is purely pythonic, all NOVAS Fortran routines are re-written in Python. The 2-D maps take a long time to compute, so the tedious *for*-loops are parallelized with `concurrent.futures.ThreadPoolExecutor()`. Running more scirpts in parallel will jam your CPUs [Just saying].
+
+GOES-R SUVI telescope images coronal emissions at:
+- 94A
+- 131A
+- 171A
+- 195A
+- 285A
+- 304A
+
+We are accressing the SUVI data via NOAA NCEI. This is problematic becuase NCEI has numerous paths to parts of the data at different data levels (from L1 to L2) and differnt data availability. The latest version of pyEclipse connects to SUVI L2 data whihc appears to be available for 2022 and 2023.
+
+TO DO: add capability to download Honode XRT synoptic maps from https://solar.physics.montana.edu/HINODE/XRT/SCIA/synop_official/
+Presetnly, the XRT images need to be downlaoded manually, but pyEclipse reads the data with eio.load('hinode_image.fits')
 
 To download desired SDO AIA images in .fits format, 
 
@@ -95,6 +108,9 @@ Here is an example profile:
 ![e](https://github.com/aldebaran1/pyEclipse/blob/master/misc/lat_alt_2017.png)
 
 ### References
+All details available in the following associated paper. Please cite this software and methodology as:
+Mrak, S., Zhu, Q., Deng, Y., Dammasch, I. E., Dominique, M., Hairston, M. R., Nishimura, Y., & Semeter, J. (2022). Modeling Solar Eclipses at Extreme Ultra Violet Wavelengths and the Effects of Nonuniform Eclipse Shadow on the Ionosphere-Thermosphere system. Journal of Geophysical Research: Space Physics, e2022JA031058. https://doi.org/10.1029/2022JA031058
+
 
 [a] Lemen et al. (2012), Doi:10.1007/s11207-011-9776-8     
 [b] Huba nd Drob (2017), Doi:10.1002/2017GL073549    
