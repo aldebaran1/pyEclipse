@@ -57,12 +57,14 @@ def dlSun(tlim: Union[str, list, ndarray] = [],
     
     if instrument == 'suvi':
         suvimap = {'94': 'fe094', '131': 'fe131', '171': 'fe171', '195': 'fe195', '284': 'fe284', '304': 'he304'}
+        suvimap = {'94': 'ci094', '131': 'ci131', '171': 'ci171', '195': 'ci195', '284': 'ci284', '304': 'ci304'}
         
 #        import tarfile
         line = suvimap[str(wl)]
-#        url = f'https://www.ncei.noaa.gov/data/goes-r-series-l2-operational-space-weather-products/access/goes{sn}/suvi/{tlim_dt[0].strftime("%Y")}/{tlim_dt[0].strftime("%m")}/{tlim_dt[0].strftime("%d")}/'
+        # url = f'https://www.ncei.noaa.gov/data/goes-r-series-l2-operational-space-weather-products/access/goes{sn}/suvi/{tlim_dt[0].strftime("%Y")}/{tlim_dt[0].strftime("%m")}/{tlim_dt[0].strftime("%d")}/'
+        url = f'https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes{sn}/l2/data/suvi-l2-{line}/{tlim_dt[0].strftime("%Y/%m/%d/")}'
 #        url = f'https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes{sn}/suvi/{tlim_dt[0].strftime("%Y")}/{tlim_dt[0].strftime("%m")}/{tlim_dt[0].strftime("%d")}/'
-        url = f'https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes{sn}/l1b/suvi-l1b-{line}/{tlim_dt[0].strftime("%Y")}/{tlim_dt[0].strftime("%m")}/{tlim_dt[0].strftime("%d")}/'
+        # url = f'https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes{sn}/l1b/suvi-l1b-{line}/{tlim_dt[0].strftime("%Y")}/{tlim_dt[0].strftime("%m")}/{tlim_dt[0].strftime("%d")}/'
 #        fnmask = f'OR_SUVI-L1b-{line}_G{sn}_{tlim_dt[0].strftime("%Y%j%H%M")}*fits.gz'
         filenames = []
         filenamedates = []
@@ -70,27 +72,27 @@ def dlSun(tlim: Union[str, list, ndarray] = [],
             html = response.read().decode('ascii')
             soup = BeautifulSoup(html, 'html.parser')
             for link in soup.find_all('a'):
-                if link.get('href') is not None and link.get('href')[:2] == 'OR':
+                if link.get('href') is not None and link.get('href')[:2] == 'dr':
                     filenames.append(link.get('href'))
-                    filenamedates.append(datetime.strptime(link.get('href')[23:37], '%Y%j%H%M%S%f'))
+                    filenamedates.append(datetime.strptime(link.get('href')[22:38], '%Y%m%dT%H%M%SZ'))
         fnd = np.array(filenamedates)
         idt = abs(fnd - tlim_dt[0]).argmin()
         f = np.array(filenames)[idt]
         try:
 #            subprocess.call(f'wget {url} -P "{odir}" -A {fnmask}', shell=True)
             wget.download(url + f, out=odir)
-            import gzip
-            import shutil
-            import subprocess
-            with gzip.open(f'{odir}{f}', 'rb') as f_in:
-                with open(f'{odir}{f[:-3]}', 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-            subprocess.call(f'del /f "{odir}{f}"', shell=True)
+            # import gzip
+            # import shutil
+            # import subprocess
+            # with gzip.open(f'{odir}{f}', 'rb') as f_in:
+                # with open(f'{odir}{f[:-3]}', 'wb') as f_out:
+                    # shutil.copyfileobj(f_in, f_out)
+            # subprocess.call(f'del /f "{odir}{f}"', shell=True)
         except Exception as e:
             print (e)
-            print (f"File doesn't exists:\n{url + np.array(filenames)[idt]}")
-            print ('Check if data exists for this date first on NOAA webpage')
-            print (url)
+            # print (f"File doesn't exists:\n{url + np.array(filenames)[idt]}")
+            # print ('Check if data exists for this date first on NOAA webpage')
+            # print (url)
         
         # SunPy interface doesn't work
 #        result = Fido.search(attrs_time,
