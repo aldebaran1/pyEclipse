@@ -81,18 +81,28 @@ def get_filename(folder, wl, time, instrument, sn=None):
             suvi_wl = np.array([int(os.path.split(f)[1][13:16]) for f in fnlist])
             suvi_sn = np.array([int(os.path.split(f)[1][18:20]) for f in fnlist])
             fdate_dt = np.array([datetime.strptime(os.path.split(f)[1][22:37], '%Y%m%dT%H%M%S') for f in fnlist])
+            
             idr = np.logical_and(suvi_sn==sn, suvi_wl==wl)
             fdate_dt = fdate_dt[idr]
             fnlist = fnlist[idr]
-            
         elif instrument.lower() == 'xrt':
             fnlist = np.array(glob(folder + 'synop_XRT*.fits'))
             fdate_dt = np.array([datetime.strptime(os.path.split(f)[1][9:-7], '%Y%m%d_%H%M%S') for f in fnlist])
-            
-        idX = abs(fdate_dt - time).argmin()
-        if (abs(fdate_dt - time)[idX].total_seconds()) > 12*60*60:
-                raise ('No images available withing the 12 hours from the given time')
-        fn = fnlist[idX]
+        
+        if fdate_dt.size > 1:    
+            idX = abs(fdate_dt - time).argmin()
+            if (abs(fdate_dt - time)[idX].total_seconds()) > 24*60*60:
+                    print ('No images available within 24 hours from the given time, ', time)
+                    return 0
+            fn = fnlist[idX]
+        elif fdate_dt.size == 1:
+            if (abs(fdate_dt[0] - time).total_seconds()) > 24*60*60:
+                print ('No images available within 24 hours from the given time')
+                return 0
+            else:
+                fn = fnlist[0]
+        else:
+            raise("No matches were found")
         print ("File choosen: " + os.path.split(fn)[1])
     return fn
 
