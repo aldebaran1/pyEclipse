@@ -77,11 +77,10 @@ def get_filename(folder, wl, time, instrument, sn=None):
             fdate_dt = np.array([parser.parse(d) for d in filedates])
             
         elif instrument in ('suvi', 'SUVI'):
-            fnlist = np.array(glob(folder + '*suvi*.fits'))
-            suvi_wl = np.array([int(os.path.split(f)[1][14:17]) for f in fnlist])
-            suvi_sn = np.array([int(os.path.split(f)[1][19:21]) for f in fnlist])
-            fdate_dt = np.array([datetime.strptime(os.path.split(f)[1][23:37], '%Y%j%H%M%S%f') for f in fnlist])
-        
+            fnlist = np.array(sorted(glob(folder + '*suvi*.fits')))
+            suvi_wl = np.array([int(os.path.split(f)[1][13:16]) for f in fnlist])
+            suvi_sn = np.array([int(os.path.split(f)[1][18:20]) for f in fnlist])
+            fdate_dt = np.array([datetime.strptime(os.path.split(f)[1][22:37], '%Y%m%dT%H%M%S') for f in fnlist])
             idr = np.logical_and(suvi_sn==sn, suvi_wl==wl)
             fdate_dt = fdate_dt[idr]
             fnlist = fnlist[idr]
@@ -110,7 +109,7 @@ def load(folder: str = None,
     else:
         fn = folder
     
-    ix = 1 if instrument in ('aia', 'AIA') else 0
+    ix = 1 if instrument in ('aia', 'AIA', 'suvi', 'SUVI') else 0
     
     try:
         FITS = fits.open(fn)
@@ -118,10 +117,11 @@ def load(folder: str = None,
         raise (e)
     FITS[ix].verify('fix')
     # bitpix = FITS[ix].header['BITPIX']
-    if instrument.lower() in ('aia') :
+    if instrument.lower() in ('aia', 'suvi') :
         imtime =  parser.parse(FITS[ix].header['DATE-OBS']) 
-    elif instrument.lower() in ('suvi'):
-        imtime = parser.parse(FITS[ix].header['DATE'])
+    # elif instrument.lower() in ('suvi'):
+        # print(FITS[ix].header)
+        # imtime = parser.parse(FITS[ix].header['DATE_OBS'])
     elif instrument.lower() in ('xrt', 'eit'):
         imtime = parser.parse(FITS[ix].header['DATE_OBS'])
     else:
