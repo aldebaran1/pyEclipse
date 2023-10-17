@@ -77,7 +77,7 @@ def get_filename(folder, wl, time, instrument, sn=None):
             fdate_dt = np.array([parser.parse(d) for d in filedates])
             
         elif instrument in ('suvi', 'SUVI'):
-            fnlist = np.array(glob(folder + '*l1b*.fits'))
+            fnlist = np.array(glob(folder + '*suvi*.fits'))
             suvi_wl = np.array([int(os.path.split(f)[1][14:17]) for f in fnlist])
             suvi_sn = np.array([int(os.path.split(f)[1][19:21]) for f in fnlist])
             fdate_dt = np.array([datetime.strptime(os.path.split(f)[1][23:37], '%Y%j%H%M%S%f') for f in fnlist])
