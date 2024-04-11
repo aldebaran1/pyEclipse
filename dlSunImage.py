@@ -23,6 +23,9 @@ import wget
 import urllib.request
 from bs4 import BeautifulSoup
 
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
 def dlSun(tlim: Union[str, list, ndarray] = [],
           instrument: str = 'aia',
           wl: int = 193,
