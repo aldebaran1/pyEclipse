@@ -110,7 +110,8 @@ def load(folder: str = None,
            wl: int = 193, 
            time: Union[datetime, str] = None,
            sn: int = None,
-           instrument: str = 'aia') -> xarray.Dataset:
+           instrument: str = 'aia',
+           xrt_treshold: int = 3) -> xarray.Dataset:
     
     assert (instrument in ('aia' , 'eit', 'suvi', 'AIA', 'EIT', 'SUVI', 'xrt', 'XRT')), "Currently we support SDO AIA, SOHO EIT, Hinode XRT, and GOES-R SUVI telescopes"
     
@@ -133,6 +134,8 @@ def load(folder: str = None,
         # print(FITS[ix].header)
         # imtime = parser.parse(FITS[ix].header['DATE_OBS'])
     elif instrument.lower() in ('xrt', 'eit'):
+        # imtime =  parser.parse(FITS[ix].header['DATE-OBS']) 
+        # print (FITS[1].header)
         imtime = parser.parse(FITS[ix].header['DATE_OBS'])
     else:
         print ("Instrument not on the list of available data")
@@ -159,7 +162,7 @@ def load(folder: str = None,
     im[im < 0] = 0
     im[im > 2**16] = 0
     if instrument.lower() == 'xrt':
-        im[im < 30] = 0
+        im[im < xrt_treshold] = 0
         im = ndimage.median_filter(ndimage.median_filter(im, 3), 3)
     # Construct  xarray for easier data manipulation and access
     D = xarray.Dataset({f'{instrument.upper()}{wl}': (('x', 'y'), im)})

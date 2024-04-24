@@ -412,9 +412,16 @@ def mask_lonlat_geo(T, glon, glat, ghgt=0, srad_fact=1, mode='novas'):
     return np.squeeze(OF)
 
 #%% SDO AIA
-def eof_time_sdo(SDO, t0, t1, glon, glat, ghgt, wl=193, dm=10,ds=0):
-
-    times = get_times(t0,t1,dm=dm,ds=ds)
+def eof_time_sdo(SDO, t0, t1=None, glon=0, glat=0, ghgt=0, wl=193, dm=10,ds=0):
+    if isinstance(t0, datetime) and isinstance(t1, datetime):
+        times = get_times(t0,t1,dm=dm,ds=ds)
+    elif isinstance(t0, list):
+        t0 = np.array(t0)
+        times = t0
+    elif isinstance(t0, np.ndarray):
+        times = t0
+    else:
+        print ("isinstance t0 == ??")
     OF = np.ones(times.size)
     instrument = list(SDO.variables)[0][:3]
     imsdo = SDO[list(SDO.variables)[0]].values
@@ -447,10 +454,17 @@ def mask_lonlat_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
             print(datetime.now()-t0)
     return OF
 
-def mask_latalt_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
+def mask_latalt_sdo(SDO, T, glon, glat, ghgt, wl=193, instrument = 'AIA', verbose=False):
     assert isinstance(ghgt, np.ndarray)
     assert isinstance(glat, np.ndarray)
     assert isinstance(glon, (int, float))
+    
+    if instrument.upper() == 'AIA':
+        key = f'AIA{wl}'
+    elif instrument.upper() == 'XRT':
+        key = 'XRTX'
+    else:
+        print ("Do for suvi and eit")
     
     OF = np.ones((glat.size, ghgt.size))
     if verbose:
@@ -463,7 +477,7 @@ def mask_latalt_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
             if verbose:
                 if c%1000 == 0:
                     print ("{}/{}".format(c,C))
-            OF[i,j] =  mask_sdo_ephem(T, glon, glat[i], ghgt=ghgt[j], x0=SDO.x0, y0=SDO.y0, imsdo=SDO['AIA{}'.format(wl)].values, pixscale=SDO.pixscale)
+            OF[i,j] =  mask_sdo_ephem(T, glon, glat[i], ghgt=ghgt[j], x0=SDO.x0, y0=SDO.y0, imsdo=SDO[key].values, pixscale=SDO.pixscale)
             if verbose:
                 c+=1
         if verbose:
@@ -472,7 +486,10 @@ def mask_latalt_sdo(SDO, T, glon, glat, ghgt, wl=193, verbose=False):
 
 # Spacecraft
 def eof_satellite(times, glon, glat, alt_km, SDO=None, srad=1.0, wl='geo', 
-                  use_parallactic_angle=1, verbose=False):
+                  use_parallactic_angle=1, verbose=False, instrument='AIA'):
+    instrument = instrument.upper()
+    if instrument == 'XRT': 
+        wl = 'X'
     OF = np.zeros(times.size)
     for i,T in enumerate(times):
         if verbose:
@@ -482,7 +499,7 @@ def eof_satellite(times, glon, glat, alt_km, SDO=None, srad=1.0, wl='geo',
         if sza < 95:
             if SDO is not None:
                 OF[i] = mask_sdo_ephem(T, glon[i], glat[i], alt_km[i]*1e3, SDO.x0, SDO.y0, 
-                  SDO['AIA{}'.format(wl)].values, SDO.pixscale,
+                  SDO['{}{}'.format(instrument, wl)].values, SDO.pixscale,
                   use_parallactic_angle=use_parallactic_angle)
             else:
                 OF[i] = mask_geo_ephem(T, glon[i], glat[i], alt_km[i]*1e3, srad_fact=srad)
