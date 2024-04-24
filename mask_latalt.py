@@ -9,29 +9,30 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from eclipse import utils, eio
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+import glob 
 t0 = datetime(2021,6,10,9,0,0)
 t1 = datetime(2021,6,10,10,0,0)
 #T = datetime(2021,12,4,8,15,0)
 #tsdo = datetime(2021,12,4,7,30,0)
 tsdo = None
 T = datetime(2017,8,21,18,0)
-T = datetime(2021,6,10,10,0)
+T = datetime(2023,10,14,17,15)
 dm = 50
 ds = 0
 srad_fact = 1.15
 
 glon_center = [-60, 120]
-#glon_center = [-100]
+glon_center = [-106.4]
 
 wl = 193
 
 animation = 0
 save = 0
-folder = 'G:\\My Drive\\eclipse\\mask\\{}\\latalt\\lon{}\\'.format(T.strftime("%Y%m%d"), glon_center)
+# folder = 'G:\\My Drive\\eclipse\\mask\\{}\\latalt\\lon{}\\'.format(T.strftime("%Y%m%d"), glon_center)
+aiafolder = '/Users/mraks1/Library/CloudStorage/Box-Box/Projects/eclipse/Eclipse_20231014/solar_image/'
 
 glat = [np.arange(20, 90, 1), np.arange(90, 79.9, -1)]
-#glat = [np.arange(0, 90.1, 1)]
+glat = [np.arange(23, 43.1, 0.25)]
 if len(glat) > 1:
     for i in range(len(glat)):
         if i == 0:
@@ -40,7 +41,7 @@ if len(glat) > 1:
             xglat = np.hstack((xglat, glat[i]))
 else:
     xglat = glat[0]
-ghgt = np.arange(0, 400.1e3, 50e3)
+ghgt = np.arange(0, 400.1e3, 20e3)
 
 if animation:
     times = []
@@ -52,10 +53,10 @@ else:
     times = np.array([T])
     
 if wl != 'geo':
-    aiafolder = 'G:\\My Drive\\eclipse\\sdoaia\\'
+    
     if tsdo is None:
         tsdo = times[0]
-    SDO = eio.load(folder=aiafolder, wl=wl, time=tsdo)
+    SDO = eio.load(folder=glob.glob(aiafolder+f"*{wl}*.fits")[0], wl=wl, time=tsdo)
 
 latsize = 0
 for i in range(len(glat)):

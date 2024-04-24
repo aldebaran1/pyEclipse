@@ -14,9 +14,11 @@ import cartopy.crs as ccrs
 from scipy import ndimage
 from dateutil import parser
 from argparse import ArgumentParser
+import platform
 
 projection = 'ortographic'
 mlat_levels = [-65, -75, 60, 75]
+sep = os.sep
 
 def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
          laplace=0,auroral_oval=0,clabel=0, srad=1.0, 
@@ -29,20 +31,24 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
         apx=1
     else:
         apx = 0
-        
+    # print (odir)
     if odir is None:
         if wl != 'geo':
             if laplace:
-                odir = os.path.join(idir, "{}_{}_{}_lap\\".format(wl, alt_km, int(eta)))
+                odir = os.path.join(idir, "{}_{}_{}_lap{}".format(wl, alt_km, int(eta), sep))
             else:
-                odir = os.path.join(idir, "{}_{}_{}\\".format(wl, alt_km, int(eta)))
+                odir = os.path.join(idir, "{}_{}_{}{}".format(wl, alt_km, int(eta), sep))
         else:
             if laplace:
-                odir = os.path.join(idir, "{}_{}_{}_lap\\".format(wl, srad, alt_km))
+                odir = os.path.join(idir, "{}_{}_{}_lap{}".format(wl, srad, alt_km, sep))
             else:
-                odir = os.path.join(idir, "{}_{}_{}\\".format(wl, srad, alt_km))
+                odir = os.path.join(idir, "{}_{}_{}{}".format(wl, srad, alt_km, sep))
     if not os.path.exists(odir):
-        subprocess.call('mkdir "{}"'.format(odir), timeout=2, shell=True)
+        print (odir)
+        if platform.system() == "Windows":
+            subprocess.call('mkdir "{}"'.format(odir), timeout=2, shell=True)
+        else:
+            subprocess.call('mkdir -p "{}"'.format(odir), timeout=2, shell=True)
     assert os.path.exists(odir)
     
     if wl != 'geo':
@@ -85,7 +91,7 @@ def main(idir=None, wl=None, alt_km=None, odir=None, tlim=None,
                                   title = title,
                                   meridians=np.arange(-180,180.1,40), parallels=np.arange(-80,81,20),
                                   background_color='grey',
-                                  apex=apx, mlat_levels=mlat_levels, mlat_colors='b',
+                                  # apex=apx, mlat_levels=mlat_levels, mlat_colors='b',
                                   mlat_labels=0)
 
         sza = EOF.sza.values
