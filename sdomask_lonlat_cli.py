@@ -117,7 +117,7 @@ if __name__ == '__main__':
     p.add_argument('--dlat', help='GLAT spacing, Default=1', type=int, default=1)
     p.add_argument('--tsdo', help='Time for the SDO image', default=None)
     p.add_argument('--sdodir', help='Folder to SDO images', default=None)
-    p.add_argument('-w', '--wl', help='Choose the wavelength. Default is 193A for the SDO', default = 193, type=int)
+    p.add_argument('-w', '--wl', help='Choose the wavelength. Default is 193A for the SDO', default = 193, type=str)
     p.add_argument('--altkm', help='altitude in km', default = 350, type=int)
     p.add_argument('--sn', help='GOES satellite number', default = 16, type=int)
     p.add_argument('-i', '--instrument', help='AIA, SUVI or EIT', default = 'aia', type=str)
