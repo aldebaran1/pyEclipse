@@ -2,7 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/362197547.svg)](https://zenodo.org/badge/latestdoi/362197547)
 
-This model was supported by National Science Fundation grant AGS-13019141 and by NASA grant 13018916. The addition of Hinode XRT is supported by AFOSR under grant FA9550-24-1-0013.
+This model was supported by National Science Foundation grant AGS-13019141 and by NASA grant 80NSSC22K0324. The addition of Hinode XRT is supported by AFOSR under grant FA9550-24-1-0013.
 
 
 PyEclipse is a pythonic software framework for computing solar eclipses. The unique feature of this framework is a computation of eclipse penumbra at wavelengths captured by solar telescopes at various wavelengths. Momentarily, we interface with Virtual Solar Observatory, using SunPy library, to retrieve Solar Dynamics Observatory (SDO) Atmospheric Imaging Assembly (AIA) images at Extreme UltraViolet (EUV) Wavelengths. SDO AIA images are high-resolution (4096x4096) and high cadence (1 minute per wavelength). We can download SOHO EIT as well using SunPy interface, however, the data quality is very poor. PyEclipse has a custom interface to noaa.ncei to download GOES SUVI L1b and L2 data. Only L2 data is good enough quality for precise eclipse modeling.*[Other telescopes can be added to the package, for instance, \, GOES SXI, as long as they are provided the metadata described below]*   
